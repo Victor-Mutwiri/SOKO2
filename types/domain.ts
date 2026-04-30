@@ -44,3 +44,14 @@ export type DashboardSummary = {
   shopsVisitedToday: number;
   pendingOrders: number;
 };
+
+export type SalesUser = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  position: "Sales Rep" | "Team Lead" | "Super Admin";
+  status: "Active" | "Suspended";
+  canEditPrices: boolean;
+};

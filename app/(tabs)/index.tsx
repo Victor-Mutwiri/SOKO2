@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "expo-router";
-import { RefreshControl, ScrollView, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 
 import { EmptyState } from "@/components/empty-state";
 import { MetricCard } from "@/components/metric-card";
@@ -8,10 +8,12 @@ import { OrderRow } from "@/components/order-row";
 import { PrimaryButton } from "@/components/primary-button";
 import { ScreenSection } from "@/components/screen-section";
 import { colors, spacing } from "@/constants/theme";
+import { useAuth } from "../../providers/auth-provider";
 import { getDashboardSummary, getRecentOrders } from "@/services/supabase-queries";
 import { formatCurrency } from "@/utils/format";
 
 export default function DashboardScreen() {
+  const { user, signOut } = useAuth();
   const summaryQuery = useQuery({ queryKey: ["dashboard-summary"], queryFn: getDashboardSummary });
   const ordersQuery = useQuery({ queryKey: ["recent-orders"], queryFn: getRecentOrders });
   const refreshing = summaryQuery.isFetching || ordersQuery.isFetching;
@@ -31,11 +33,16 @@ export default function DashboardScreen() {
     >
       <View style={{ gap: spacing.sm }}>
         <Text selectable style={{ color: colors.muted, fontSize: 13, fontWeight: "700", textTransform: "uppercase" }}>
-          Today
+          {user ? `${user.firstName} ${user.lastName}` : "Today"}
         </Text>
-        <Text selectable style={{ color: colors.text, fontSize: 30, fontWeight: "800" }}>
-          Field sales dashboard
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.md }}>
+          <Text selectable style={{ color: colors.text, fontSize: 30, fontWeight: "800", flex: 1 }}>
+            Field sales dashboard
+          </Text>
+          <Pressable onPress={signOut} style={{ paddingVertical: spacing.xs }}>
+            <Text style={{ color: colors.pepsiBlue, fontWeight: "900" }}>Sign out</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.md }}>

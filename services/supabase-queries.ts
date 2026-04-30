@@ -1,6 +1,7 @@
 import { Activity, DashboardSummary, Order, Product, Shop } from "@/types/domain";
 
 import { mockActivities, mockOrders, mockProducts, mockShops, mockSummary } from "./mock-data";
+import { getStoredSalesUser } from "./auth-session";
 import { isSupabaseConfigured, supabase } from "./supabase";
 
 type ShopRow = {
@@ -199,12 +200,12 @@ export async function createOrder(input: CreateOrderInput) {
   if (!isSupabaseConfigured) return { id: `mock-${Date.now()}` };
 
   const totalAmount = input.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-  const { data: userData } = await supabase.auth.getUser();
+  const salesUser = await getStoredSalesUser();
   const { data: order, error } = await supabase
     .from("orders")
     .insert({
       shopid: Number(input.shopId),
-      sold_by_id: userData.user?.id ?? null,
+      sold_by_id: salesUser?.id ?? null,
       total_amount: totalAmount,
       paid_amount: 0,
       status: "Pending"
