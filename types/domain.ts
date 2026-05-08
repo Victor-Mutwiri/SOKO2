@@ -40,9 +40,15 @@ export type Activity = {
 
 export type DashboardSummary = {
   salesToday: number;
+  salesThisWeek: number;
   ordersToday: number;
   shopsVisitedToday: number;
+  shopsVisitedThisWeek: number;
   pendingOrders: number;
+  dailySalesTarget: number;
+  weeklySalesTarget: number;
+  dailyVisitTarget: number;
+  weeklyVisitTarget: number;
 };
 
 export type SalesUser = {

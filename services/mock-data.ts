@@ -79,7 +79,13 @@ export const mockActivities: Activity[] = [
 
 export const mockSummary: DashboardSummary = {
   salesToday: 37000,
+  salesThisWeek: 142000,
   ordersToday: 7,
   shopsVisitedToday: 14,
-  pendingOrders: 3
+  shopsVisitedThisWeek: 48,
+  pendingOrders: 3,
+  dailySalesTarget: 50000,
+  weeklySalesTarget: 250000,
+  dailyVisitTarget: 40,
+  weeklyVisitTarget: 180
 };

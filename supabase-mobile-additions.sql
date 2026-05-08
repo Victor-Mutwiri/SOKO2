@@ -68,3 +68,14 @@ CREATE TABLE IF NOT EXISTS public.support_requests (
     status TEXT NOT NULL DEFAULT 'Open' CHECK (status IN ('Open', 'In Progress', 'Resolved')),
     createdat TIMESTAMPTZ DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS public.sales_targets (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    userid UUID REFERENCES public.users(id),
+    daily_sales_target DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    weekly_sales_target DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    daily_visit_target INTEGER NOT NULL DEFAULT 0,
+    weekly_visit_target INTEGER NOT NULL DEFAULT 0,
+    isactive BOOLEAN DEFAULT true,
+    createdat TIMESTAMPTZ DEFAULT now()
+);

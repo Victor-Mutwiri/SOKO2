@@ -33,6 +33,13 @@ type OrderRow = {
   shop?: { name?: string | null } | Array<{ name?: string | null }> | null;
 };
 
+type TargetRow = {
+  daily_sales_target: string | number | null;
+  weekly_sales_target: string | number | null;
+  daily_visit_target: number | null;
+  weekly_visit_target: number | null;
+};
+
 export async function getShops(): Promise<Shop[]> {
   if (!isSupabaseConfigured) return mockShops;
 
@@ -108,31 +115,49 @@ export async function getRecentOrders(): Promise<Order[]> {
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   if (!isSupabaseConfigured) return mockSummary;
 
+  const salesUser = await getStoredSalesUser();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const weekStart = getWeekStart(new Date());
 
   const { data: orders, error: ordersError } = await supabase
     .from("orders")
-    .select("id,total_amount,status,shopid")
-    .gte("createdat", today.toISOString());
+    .select("id,total_amount,status,shopid,createdat")
+    .gte("createdat", weekStart.toISOString());
 
   if (isMissingTableError(ordersError)) {
     return {
       salesToday: 0,
+      salesThisWeek: 0,
       ordersToday: 0,
       shopsVisitedToday: 0,
-      pendingOrders: 0
+      shopsVisitedThisWeek: 0,
+      pendingOrders: 0,
+      dailySalesTarget: 0,
+      weeklySalesTarget: 0,
+      dailyVisitTarget: 0,
+      weeklyVisitTarget: 0
     };
   }
   if (ordersError) throw ordersError;
 
-  const visitedShopIds = new Set((orders ?? []).map((order) => order.shopid).filter(Boolean));
+  const weeklyOrders = orders ?? [];
+  const todayOrders = weeklyOrders.filter((order) => new Date(order.createdat) >= today);
+  const visitedToday = new Set(todayOrders.map((order) => order.shopid).filter(Boolean));
+  const visitedThisWeek = new Set(weeklyOrders.map((order) => order.shopid).filter(Boolean));
+  const targets = await getSalesTargets(salesUser?.id ?? null);
 
   return {
-    salesToday: (orders ?? []).reduce((sum, order) => sum + Number(order.total_amount ?? 0), 0),
-    ordersToday: orders?.length ?? 0,
-    shopsVisitedToday: visitedShopIds.size,
-    pendingOrders: (orders ?? []).filter((order) => order.status === "Pending").length
+    salesToday: todayOrders.reduce((sum, order) => sum + Number(order.total_amount ?? 0), 0),
+    salesThisWeek: weeklyOrders.reduce((sum, order) => sum + Number(order.total_amount ?? 0), 0),
+    ordersToday: todayOrders.length,
+    shopsVisitedToday: visitedToday.size,
+    shopsVisitedThisWeek: visitedThisWeek.size,
+    pendingOrders: weeklyOrders.filter((order) => order.status === "Pending").length,
+    dailySalesTarget: targets.dailySalesTarget,
+    weeklySalesTarget: targets.weeklySalesTarget,
+    dailyVisitTarget: targets.dailyVisitTarget,
+    weeklyVisitTarget: targets.weeklyVisitTarget
   };
 }
 
@@ -317,4 +342,45 @@ async function assertActiveWorkSession() {
   if (!session || session.status !== "active" || !isWithinWorkday()) {
     throw new Error("Clock in from the dashboard before submitting sales or shop data.");
   }
+}
+
+async function getSalesTargets(userId: string | null) {
+  const defaults = {
+    dailySalesTarget: 50000,
+    weeklySalesTarget: 250000,
+    dailyVisitTarget: 40,
+    weeklyVisitTarget: 180
+  };
+
+  const baseQuery = supabase
+    .from("sales_targets")
+    .select("daily_sales_target,weekly_sales_target,daily_visit_target,weekly_visit_target,userid,isactive")
+    .eq("isactive", true);
+
+  const { data, error } = await (userId
+    ? baseQuery.or(`userid.eq.${userId},userid.is.null`)
+    : baseQuery.is("userid", null)
+  ).order("userid", { ascending: true, nullsFirst: false }).limit(1);
+
+  if (isMissingTableError(error)) return defaults;
+  if (error) throw error;
+
+  const target = (data?.[0] ?? null) as TargetRow | null;
+  if (!target) return defaults;
+
+  return {
+    dailySalesTarget: Number(target.daily_sales_target ?? defaults.dailySalesTarget),
+    weeklySalesTarget: Number(target.weekly_sales_target ?? defaults.weeklySalesTarget),
+    dailyVisitTarget: Number(target.daily_visit_target ?? defaults.dailyVisitTarget),
+    weeklyVisitTarget: Number(target.weekly_visit_target ?? defaults.weeklyVisitTarget)
+  };
+}
+
+function getWeekStart(value: Date) {
+  const date = new Date(value);
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + diff);
+  date.setHours(0, 0, 0, 0);
+  return date;
 }

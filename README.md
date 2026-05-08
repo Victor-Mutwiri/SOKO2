@@ -45,3 +45,5 @@ The mobile app also supports rep clock-in controls. Add `sales_attendance_sessio
 Manager notifications use `sales_notifications`. Set `userid` for a rep-specific message, or leave it `NULL` for a broadcast message visible to every rep.
 
 Support form submissions use `support_requests`. Reps can also call or WhatsApp `0746583509` directly from the app.
+
+Sales and visit targets use `sales_targets`. Leave `userid` as `NULL` for a general target, or set `userid` to assign a stronger or lighter target to one rep.
