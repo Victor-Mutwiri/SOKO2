@@ -28,3 +28,33 @@ CREATE TABLE IF NOT EXISTS public.payments (
     collected_by_id UUID REFERENCES public.users(id),
     createdat TIMESTAMPTZ DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS public.sales_attendance_sessions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    userid UUID REFERENCES public.users(id),
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'paused', 'clocked_out', 'auto_clocked_out')),
+    clockedinat TIMESTAMPTZ NOT NULL DEFAULT now(),
+    clockedoutat TIMESTAMPTZ,
+    pausedat TIMESTAMPTZ,
+    totalpausedms BIGINT NOT NULL DEFAULT 0,
+    pausereason TEXT,
+    createdat TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.sales_attendance_events (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    sessionid UUID REFERENCES public.sales_attendance_sessions(id) ON DELETE CASCADE,
+    userid UUID REFERENCES public.users(id),
+    eventtype TEXT NOT NULL CHECK (eventtype IN ('clock_in', 'pause', 'resume', 'clock_out', 'auto_clock_out')),
+    reason TEXT,
+    createdat TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.sales_notifications (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    userid UUID REFERENCES public.users(id),
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    readat TIMESTAMPTZ,
+    createdat TIMESTAMPTZ DEFAULT now()
+);

@@ -3,6 +3,7 @@ import { Link } from "expo-router";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
 
 import { EmptyState } from "@/components/empty-state";
+import { OperationLock } from "@/components/operation-lock";
 import { PrimaryButton } from "@/components/primary-button";
 import { ScreenSection } from "@/components/screen-section";
 import { ShopCard } from "@/components/shop-card";
@@ -15,6 +16,7 @@ export default function ShopsScreen() {
   const { location, error, refresh } = useCurrentLocation();
 
   return (
+    <OperationLock>
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
       refreshControl={
@@ -48,5 +50,6 @@ export default function ShopsScreen() {
         )}
       </ScreenSection>
     </ScrollView>
+    </OperationLock>
   );
 }

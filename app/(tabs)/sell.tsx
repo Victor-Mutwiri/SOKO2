@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
 import { EmptyState } from "@/components/empty-state";
+import { OperationLock } from "@/components/operation-lock";
 import { PrimaryButton } from "@/components/primary-button";
 import { ProductStepper } from "@/components/product-stepper";
 import { ShopPicker } from "@/components/shop-picker";
@@ -67,6 +68,7 @@ export default function SellScreen() {
   const canSubmit = Boolean(selectedShop && geofence?.inside && items.length && !orderMutation.isPending);
 
   return (
+    <OperationLock>
     <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}>
       <ShopPicker shops={shopsQuery.data ?? []} selectedShop={selectedShop} onSelect={setSelectedShop} />
 
@@ -152,5 +154,6 @@ export default function SellScreen() {
         <Text selectable style={{ color: colors.danger }}>{orderMutation.error.message}</Text>
       ) : null}
     </ScrollView>
+    </OperationLock>
   );
 }

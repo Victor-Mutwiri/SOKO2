@@ -3,6 +3,8 @@ import { Activity, DashboardSummary, Order, Product, Shop } from "@/types/domain
 import { mockActivities, mockOrders, mockProducts, mockShops, mockSummary } from "./mock-data";
 import { getStoredSalesUser } from "./auth-session";
 import { isSupabaseConfigured, supabase } from "./supabase";
+import { getStoredWorkSession } from "./work-session";
+import { isWithinWorkday } from "@/utils/workday";
 
 type ShopRow = {
   id: number;
@@ -198,6 +200,7 @@ type CreateOrderInput = {
 
 export async function createOrder(input: CreateOrderInput) {
   if (!isSupabaseConfigured) return { id: `mock-${Date.now()}` };
+  await assertActiveWorkSession();
 
   const totalAmount = input.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   const salesUser = await getStoredSalesUser();
@@ -244,6 +247,7 @@ type CreateShopInput = {
 
 export async function createShop(input: CreateShopInput) {
   if (!isSupabaseConfigured) return { id: `mock-shop-${Date.now()}` };
+  await assertActiveWorkSession();
 
   const regionId = await getOrCreateRegionId(input.region);
   const { data: shop, error: shopError } = await supabase
@@ -305,4 +309,12 @@ function singleRelation<T>(value: T | T[] | null | undefined): T | null {
 function isMissingTableError(error: { message?: string; code?: string } | null) {
   if (!error) return false;
   return error.code === "PGRST205" || error.message?.includes("Could not find the table");
+}
+
+async function assertActiveWorkSession() {
+  const session = await getStoredWorkSession();
+
+  if (!session || session.status !== "active" || !isWithinWorkday()) {
+    throw new Error("Clock in from the dashboard before submitting sales or shop data.");
+  }
 }

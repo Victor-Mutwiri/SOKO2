@@ -55,3 +55,24 @@ export type SalesUser = {
   status: "Active" | "Suspended";
   canEditPrices: boolean;
 };
+
+export type WorkSessionStatus = "clocked_out" | "active" | "paused" | "auto_clocked_out";
+
+export type WorkSession = {
+  id: string;
+  userId: string;
+  status: WorkSessionStatus;
+  clockedInAt: string;
+  clockedOutAt?: string | null;
+  pausedAt?: string | null;
+  totalPausedMs: number;
+  pauseReason?: string | null;
+};
+
+export type SalesNotification = {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  readAt?: string | null;
+};

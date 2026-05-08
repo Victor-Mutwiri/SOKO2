@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import { useState } from "react";
 import { Alert, ScrollView, Text, TextInput, View } from "react-native";
 
+import { OperationLock } from "@/components/operation-lock";
 import { PrimaryButton } from "@/components/primary-button";
 import { colors, radii, spacing } from "@/constants/theme";
 import { useCurrentLocation } from "@/hooks/use-current-location";
@@ -41,6 +42,7 @@ export default function NewShopScreen() {
   const canSubmit = Boolean(name.trim() && phone.trim() && region.trim() && location && !mutation.isPending);
 
   return (
+    <OperationLock>
     <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}>
       <View style={{ gap: spacing.sm }}>
         <Text selectable style={{ color: colors.text, fontSize: 28, fontWeight: "800" }}>
@@ -84,6 +86,7 @@ export default function NewShopScreen() {
       />
       {mutation.error ? <Text selectable style={{ color: colors.danger }}>{mutation.error.message}</Text> : null}
     </ScrollView>
+    </OperationLock>
   );
 }
 

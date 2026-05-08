@@ -4,7 +4,7 @@ import { Pressable, StyleProp, Text, ViewStyle } from "react-native";
 
 import { colors, radii, spacing } from "@/constants/theme";
 
-type IconName = "cart" | "plus" | "check" | "map-pin";
+type IconName = "cart" | "plus" | "check" | "map-pin" | "clock-in" | "clock-out" | "play" | "pause";
 
 type Props = {
   label: string;
@@ -56,5 +56,9 @@ const iconMap = {
   cart: "cart-outline",
   plus: "plus",
   check: "check",
-  "map-pin": "map-marker-radius-outline"
+  "map-pin": "map-marker-radius-outline",
+  "clock-in": "clock-start",
+  "clock-out": "clock-end",
+  play: "play",
+  pause: "pause"
 } as const;

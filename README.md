@@ -39,3 +39,7 @@ The data layer is centralized in `services/supabase-queries.ts`. Rename table or
 The provided live Supabase project currently exposes `shops`, `locations`, `products`, `regions`, `routes`, `route_shops`, and `users` to the publishable key. `orders` and `payments` were not visible during the mobile smoke test. The app handles that gracefully for reads, but mobile order submission requires `public.orders` to be present and exposed through RLS/API policies.
 
 For product-level order details, add an `order_items` table that stores each SKU and quantity. Without it, the mobile app can only persist the order total.
+
+The mobile app also supports rep clock-in controls. Add `sales_attendance_sessions` and `sales_attendance_events` from `supabase-mobile-additions.sql` so clock-in, pauses, resumes, and clock-out events are audited in Supabase.
+
+Manager notifications use `sales_notifications`. Set `userid` for a rep-specific message, or leave it `NULL` for a broadcast message visible to every rep.

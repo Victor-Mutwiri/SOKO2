@@ -1,19 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "expo-router";
-import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { RefreshControl, ScrollView, Text, View } from "react-native";
 
 import { EmptyState } from "@/components/empty-state";
 import { MetricCard } from "@/components/metric-card";
 import { OrderRow } from "@/components/order-row";
 import { PrimaryButton } from "@/components/primary-button";
 import { ScreenSection } from "@/components/screen-section";
+import { WorkSessionCard } from "@/components/work-session-card";
 import { colors, spacing } from "@/constants/theme";
 import { useAuth } from "../../providers/auth-provider";
+import { useWorkSession } from "../../providers/work-session-provider";
 import { getDashboardSummary, getRecentOrders } from "@/services/supabase-queries";
 import { formatCurrency } from "@/utils/format";
 
 export default function DashboardScreen() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
+  const { isActive } = useWorkSession();
   const summaryQuery = useQuery({ queryKey: ["dashboard-summary"], queryFn: getDashboardSummary });
   const ordersQuery = useQuery({ queryKey: ["recent-orders"], queryFn: getRecentOrders });
   const refreshing = summaryQuery.isFetching || ordersQuery.isFetching;
@@ -32,18 +35,15 @@ export default function DashboardScreen() {
       contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}
     >
       <View style={{ gap: spacing.sm }}>
-        <Text selectable style={{ color: colors.muted, fontSize: 13, fontWeight: "700", textTransform: "uppercase" }}>
-          {user ? `${user.firstName} ${user.lastName}` : "Today"}
+        <Text selectable style={{ color: colors.text, fontSize: 30, fontWeight: "900" }}>
+          Hello, {user?.firstName ?? "there"}. Fruitful selling.
         </Text>
-        <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.md }}>
-          <Text selectable style={{ color: colors.text, fontSize: 30, fontWeight: "800", flex: 1 }}>
-            Field sales dashboard
-          </Text>
-          <Pressable onPress={signOut} style={{ paddingVertical: spacing.xs }}>
-            <Text style={{ color: colors.pepsiBlue, fontWeight: "900" }}>Sign out</Text>
-          </Pressable>
-        </View>
+        <Text selectable style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
+          Clock in to unlock shop visits, sales, onboarding, and route activity.
+        </Text>
       </View>
+
+      <WorkSessionCard />
 
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.md }}>
         <MetricCard label="Sales" value={formatCurrency(summary?.salesToday ?? 0)} tone="blue" />
@@ -53,12 +53,21 @@ export default function DashboardScreen() {
       </View>
 
       <View style={{ flexDirection: "row", gap: spacing.md }}>
-        <Link href="/sell" asChild>
-          <PrimaryButton label="Start sale" icon="cart" style={{ flex: 1 }} />
-        </Link>
-        <Link href="/new-shop" asChild>
-          <PrimaryButton label="Add shop" icon="plus" variant="secondary" style={{ flex: 1 }} />
-        </Link>
+        {isActive ? (
+          <>
+            <Link href="/sell" asChild>
+              <PrimaryButton label="Start sale" icon="cart" style={{ flex: 1 }} />
+            </Link>
+            <Link href="/new-shop" asChild>
+              <PrimaryButton label="Add shop" icon="plus" variant="secondary" style={{ flex: 1 }} />
+            </Link>
+          </>
+        ) : (
+          <>
+            <PrimaryButton label="Start sale" icon="cart" disabled style={{ flex: 1 }} />
+            <PrimaryButton label="Add shop" icon="plus" disabled variant="secondary" style={{ flex: 1 }} />
+          </>
+        )}
       </View>
 
       <ScreenSection title="Recent orders">
