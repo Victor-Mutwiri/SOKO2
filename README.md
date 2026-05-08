@@ -43,3 +43,5 @@ For product-level order details, add an `order_items` table that stores each SKU
 The mobile app also supports rep clock-in controls. Add `sales_attendance_sessions` and `sales_attendance_events` from `supabase-mobile-additions.sql` so clock-in, pauses, resumes, and clock-out events are audited in Supabase.
 
 Manager notifications use `sales_notifications`. Set `userid` for a rep-specific message, or leave it `NULL` for a broadcast message visible to every rep.
+
+Support form submissions use `support_requests`. Reps can also call or WhatsApp `0746583509` directly from the app.

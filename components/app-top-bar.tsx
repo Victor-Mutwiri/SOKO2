@@ -1,6 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import * as Linking from "expo-linking";
 import { Link, router } from "expo-router";
 import { useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
@@ -62,44 +61,36 @@ export function AppTopBar() {
           {user?.position ?? "Sales"}
         </Text>
 
-        <Link href="/notifications" asChild>
-          <Pressable
-            accessibilityLabel="Open notifications"
-            style={{
-              width: 42,
-              height: 42,
-              borderRadius: radii.sm,
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              borderWidth: 1,
-              alignItems: "center",
-              justifyContent: "center",
-              borderCurve: "continuous"
-            }}
-          >
-            <MaterialCommunityIcons name="bell-outline" color={colors.text} size={22} />
-            {unreadCount > 0 ? (
-              <View
-                style={{
-                  position: "absolute",
-                  top: -5,
-                  right: -5,
-                  minWidth: 20,
-                  height: 20,
-                  borderRadius: 10,
-                  backgroundColor: colors.pepsiRed,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  paddingHorizontal: 5
-                }}
-              >
-                <Text style={{ color: colors.surface, fontSize: 11, fontWeight: "900", fontVariant: ["tabular-nums"] }}>
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </Text>
-              </View>
-            ) : null}
+        <View style={{ flexDirection: "row", gap: spacing.sm }}>
+          <Pressable accessibilityLabel="Sync latest records" onPress={refresh} style={iconButtonStyle}>
+            <MaterialCommunityIcons name="refresh" color={colors.text} size={22} />
           </Pressable>
-        </Link>
+          <Link href="/notifications" asChild>
+            <Pressable accessibilityLabel="Open notifications" style={iconButtonStyle}>
+              <MaterialCommunityIcons name="bell-outline" color={colors.text} size={22} />
+              {unreadCount > 0 ? (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: -5,
+                    right: -5,
+                    minWidth: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    backgroundColor: colors.pepsiRed,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingHorizontal: 5
+                  }}
+                >
+                  <Text style={{ color: colors.surface, fontSize: 11, fontWeight: "900", fontVariant: ["tabular-nums"] }}>
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </Text>
+                </View>
+              ) : null}
+            </Pressable>
+          </Link>
+        </View>
       </View>
 
       <Modal visible={menuOpen} transparent animationType="slide" onRequestClose={() => setMenuOpen(false)}>
@@ -139,7 +130,7 @@ export function AppTopBar() {
                 label="Contact support"
                 onPress={() => {
                   setMenuOpen(false);
-                  Linking.openURL("mailto:support@sbc.co.ke");
+                  router.push("/support");
                 }}
               />
               <MenuItem
@@ -158,6 +149,18 @@ export function AppTopBar() {
     </>
   );
 }
+
+const iconButtonStyle = {
+  width: 42,
+  height: 42,
+  borderRadius: radii.sm,
+  backgroundColor: colors.surface,
+  borderColor: colors.border,
+  borderWidth: 1,
+  alignItems: "center",
+  justifyContent: "center",
+  borderCurve: "continuous"
+} as const;
 
 function MenuItem({
   icon,

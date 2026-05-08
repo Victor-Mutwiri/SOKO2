@@ -4,7 +4,7 @@ import { Pressable, StyleProp, Text, ViewStyle } from "react-native";
 
 import { colors, radii, spacing } from "@/constants/theme";
 
-type IconName = "cart" | "plus" | "check" | "map-pin" | "clock-in" | "clock-out" | "play" | "pause";
+type IconName = "cart" | "plus" | "check" | "map-pin" | "clock-in" | "clock-out" | "play" | "pause" | "phone" | "whatsapp" | "send" | "refresh";
 
 type Props = {
   label: string;
@@ -60,5 +60,9 @@ const iconMap = {
   "clock-in": "clock-start",
   "clock-out": "clock-end",
   play: "play",
-  pause: "pause"
+  pause: "pause",
+  phone: "phone",
+  whatsapp: "whatsapp",
+  send: "send",
+  refresh: "refresh"
 } as const;

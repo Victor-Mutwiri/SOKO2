@@ -58,3 +58,13 @@ CREATE TABLE IF NOT EXISTS public.sales_notifications (
     readat TIMESTAMPTZ,
     createdat TIMESTAMPTZ DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS public.support_requests (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    userid UUID REFERENCES public.users(id),
+    reason TEXT NOT NULL,
+    priority TEXT NOT NULL CHECK (priority IN ('Urgent', 'Important', 'Suggestion', 'Feedback')),
+    message TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Open' CHECK (status IN ('Open', 'In Progress', 'Resolved')),
+    createdat TIMESTAMPTZ DEFAULT now()
+);

@@ -1,13 +1,15 @@
-import { ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
-import { colors, radii, spacing } from "@/constants/theme";
+import { AppThemeMode, colors, radii, spacing } from "@/constants/theme";
 import { useAuth } from "../providers/auth-provider";
 import { useWorkSession } from "../providers/work-session-provider";
 import { formatDuration } from "@/utils/workday";
+import { useTheme } from "../providers/theme-provider";
 
 export default function SettingsScreen() {
   const { user } = useAuth();
   const { session, elapsedMs } = useWorkSession();
+  const { mode, resolvedMode, setMode } = useTheme();
 
   return (
     <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}>
@@ -30,6 +32,50 @@ export default function SettingsScreen() {
         ]}
       />
 
+      <View
+        style={{
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+          borderWidth: 1,
+          borderRadius: radii.md,
+          padding: spacing.md,
+          gap: spacing.md,
+          borderCurve: "continuous"
+        }}
+      >
+        <View style={{ gap: spacing.xs }}>
+          <Text selectable style={{ color: colors.text, fontSize: 18, fontWeight: "900" }}>
+            Appearance
+          </Text>
+          <Text selectable style={{ color: colors.muted, lineHeight: 20 }}>
+            Current theme: {resolvedMode}. Use system to follow your phone setting.
+          </Text>
+        </View>
+        <View style={{ flexDirection: "row", gap: spacing.sm }}>
+          {(["system", "light", "dark"] as AppThemeMode[]).map((themeMode) => (
+            <Pressable
+              key={themeMode}
+              onPress={() => setMode(themeMode)}
+              style={{
+                flex: 1,
+                minHeight: 44,
+                borderRadius: radii.sm,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: mode === themeMode ? colors.pepsiBlue : colors.background,
+                borderColor: mode === themeMode ? colors.pepsiBlue : colors.border,
+                borderWidth: 1,
+                borderCurve: "continuous"
+              }}
+            >
+              <Text style={{ color: mode === themeMode ? colors.surface : colors.text, fontWeight: "900", textTransform: "capitalize" }}>
+                {themeMode}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
       <InfoPanel
         title="Work session"
         rows={[
@@ -42,7 +88,7 @@ export default function SettingsScreen() {
   );
 }
 
-function InfoPanel({ title, rows }: { title: string; rows: Array<[string, string]> }) {
+function InfoPanel({ title, rows }: { title: string; rows: [string, string][] }) {
   return (
     <View
       style={{
