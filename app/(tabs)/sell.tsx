@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
@@ -29,6 +29,8 @@ export default function SellScreen() {
   const { location, error: locationError, refresh } = useCurrentLocation();
 
   const products = useMemo(() => productsQuery.data ?? [], [productsQuery.data]);
+  const isShopSelected = Boolean(selectedShop);
+
   useEffect(() => {
     if (!shopId || selectedShop) return;
 
@@ -79,7 +81,33 @@ export default function SellScreen() {
   return (
     <OperationLock>
     <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}>
-      <ShopPicker shops={shopsQuery.data ?? []} selectedShop={selectedShop} onSelect={setSelectedShop} />
+      {selectedShop ? (
+        <View style={{ gap: spacing.md }}>
+          <Pressable onPress={() => router.back()} style={{ alignSelf: "flex-start" }}>
+            <Text style={{ color: colors.pepsiBlue, fontWeight: "800" }}>← Back to shops</Text>
+          </Pressable>
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              borderWidth: 1,
+              borderRadius: radii.md,
+              padding: spacing.md,
+              gap: spacing.xs,
+              borderCurve: "continuous"
+            }}
+          >
+            <Text selectable style={{ color: colors.text, fontSize: 18, fontWeight: "900" }}>
+              Selling to {selectedShop.name}
+            </Text>
+            <Text selectable style={{ color: colors.muted }}>
+              {selectedShop.region} • {selectedShop.ownerName ?? "Owner not available"}
+            </Text>
+          </View>
+        </View>
+      ) : (
+        <ShopPicker shops={shopsQuery.data ?? []} selectedShop={selectedShop} onSelect={setSelectedShop} />
+      )}
 
       {selectedShop ? (
         <View
