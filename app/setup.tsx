@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useAuth } from "@/providers/auth-provider";
 import { useWorkSession } from "@/providers/work-session-provider";
@@ -10,6 +10,7 @@ import { colors, radii, spacing } from "@/constants/theme";
 import { getActivities, getDashboardSummary, getProducts, getRecentOrders, getShops } from "@/services/supabase-queries";
 import { getNotifications } from "@/services/notifications";
 import { useAppSetup } from "@/providers/app-setup-provider";
+import { useCurrentLocation } from "@/hooks/use-current-location";
 
 const setupSteps = [
   { key: "shops", label: "Fetching shops", queryKey: ["shops"], fn: getShops },
@@ -29,6 +30,7 @@ export default function SetupScreen() {
   const { markSetupComplete } = useAppSetup();
   const { user, isLoading: authLoading } = useAuth();
   const { refreshSession } = useWorkSession();
+  const { location, error: locationError, isLoading: isLocationLoading } = useCurrentLocation();
 
   const [currentStep, setCurrentStep] = useState<SetupStep | null>(null);
   const [completedSteps, setCompletedSteps] = useState(0);
@@ -39,7 +41,11 @@ export default function SetupScreen() {
   const returnTo = params.returnTo ? String(params.returnTo) : "/";
   const progress = setupSteps.length ? (completedSteps / setupSteps.length) * 100 : 0;
 
-  const currentLabel = currentStep ? currentStep.label : "Preparing your route";
+  const currentLabel = currentStep
+    ? currentStep.label
+    : isLocationLoading
+    ? "Getting your location"
+    : "Preparing your route";
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -59,6 +65,17 @@ export default function SetupScreen() {
       setCurrentStep(null);
       setCompletedSteps(0);
 
+      if (!location && isLocationLoading) {
+        return;
+      }
+
+      if (!location) {
+        if (locationError) {
+          throw new Error(locationError);
+        }
+        throw new Error("Could not fetch your location. Please enable GPS and try again.");
+      }
+
       try {
         await refreshSession();
 
@@ -67,7 +84,11 @@ export default function SetupScreen() {
           if (isCancelled) return;
 
           setCurrentStep(step);
-          await queryClient.prefetchQuery({ queryKey: step.queryKey, queryFn: step.fn });
+          await queryClient.prefetchQuery({
+          queryKey: step.queryKey,
+          queryFn: step.fn,
+          staleTime: step.key === "shops" ? Infinity : undefined
+        });
           if (isCancelled) return;
           setCompletedSteps(index + 1);
         }
@@ -86,7 +107,7 @@ export default function SetupScreen() {
     return () => {
       isCancelled = true;
     };
-  }, [authLoading, queryClient, markSetupComplete, refreshSession, returnTo, router, retryIndex, user]);
+  }, [authLoading, queryClient, isLocationLoading, location, locationError, markSetupComplete, refreshSession, returnTo, router, retryIndex, user]);
 
   const isComplete = completedSteps === setupSteps.length && !error;
 

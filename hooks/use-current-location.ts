@@ -1,16 +1,22 @@
 import * as Location from "expo-location";
 import { useCallback, useEffect, useState } from "react";
 
+import { getStoredLocation, saveLocation } from "@/services/location-session";
 import { Coordinates } from "@/types/domain";
 
-export function useCurrentLocation() {
+export function useCurrentLocation(options?: { refreshOnMount?: boolean }) {
   const [location, setLocation] = useState<Coordinates | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+
+    const storedLocation = await getStoredLocation();
+    if (storedLocation) {
+      setLocation(storedLocation);
+    }
 
     const permission = await Location.requestForegroundPermissionsAsync();
     if (permission.status !== "granted") {
@@ -23,20 +29,36 @@ export function useCurrentLocation() {
       const current = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced
       });
-      setLocation({
+      const coords = {
         latitude: current.coords.latitude,
         longitude: current.coords.longitude
-      });
-    } catch {
-      setError("Could not read GPS location. Check device location settings and try again.");
+      };
+      setLocation(coords);
+      await saveLocation(coords);
+    } catch (fetchError) {
+      if (storedLocation) {
+        setError("Unable to refresh GPS. Using last known location.");
+      } else {
+        const message = fetchError instanceof Error ? fetchError.message : "Unable to read GPS location.";
+        setError(`Could not read GPS location. ${message}`);
+      }
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (options?.refreshOnMount ?? true) {
+      refresh();
+    } else {
+      const loadStored = async () => {
+        const storedLocation = await getStoredLocation();
+        if (storedLocation) setLocation(storedLocation);
+        setIsLoading(false);
+      };
+      loadStored();
+    }
+  }, [options?.refreshOnMount, refresh]);
 
   return { location, error, isLoading, refresh };
 }

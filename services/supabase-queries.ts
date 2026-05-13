@@ -1,10 +1,12 @@
-import { Activity, DashboardSummary, Order, Product, Region, Shop } from "@/types/domain";
+import { Activity, DashboardSummary, Order, OrderDetail, Product, Region, Shop } from "@/types/domain";
 
 import { mockActivities, mockOrders, mockProducts, mockShops, mockSummary } from "./mock-data";
 import { getStoredSalesUser } from "./auth-session";
 import { isSupabaseConfigured, supabase } from "./supabase";
 import { getStoredWorkSession } from "./work-session";
+import { getStoredLocation } from "./location-session";
 import { isWithinWorkday } from "@/utils/workday";
+import { distanceMeters } from "@/utils/geo";
 
 type ShopRow = {
   id: number;
@@ -41,17 +43,30 @@ type TargetRow = {
   weekly_visit_target: number | null;
 };
 
+function sortShopsByDistance(shops: Shop[], referenceLocation: { latitude: number; longitude: number } | null) {
+  if (!referenceLocation) {
+    return shops;
+  }
+
+  return [...shops].sort((left, right) => {
+    const leftDistance = distanceMeters(referenceLocation, left);
+    const rightDistance = distanceMeters(referenceLocation, right);
+    return leftDistance - rightDistance;
+  });
+}
+
 export async function getShops(): Promise<Shop[]> {
-  if (!isSupabaseConfigured) return mockShops;
+  const location = await getStoredLocation();
+
+  if (!isSupabaseConfigured) return sortShopsByDistance(mockShops, location);
 
   const { data, error } = await supabase
     .from("shops")
-    .select("id,name,ownerName,ownerMobile,regionId,region:regions(name),locations(latitude,longitude,name)")
-    .order("name", { ascending: true });
+    .select("id,name,ownerName,ownerMobile,regionId,region:regions(name),locations(latitude,longitude,name)");
 
   if (error) throw error;
 
-  return ((data ?? []) as ShopRow[])
+  const shops = ((data ?? []) as ShopRow[])
     .map((row) => {
       const firstLocation = row.locations?.[0];
       const region = singleRelation(row.region)?.name ?? "Unassigned";
@@ -70,14 +85,21 @@ export async function getShops(): Promise<Shop[]> {
       } satisfies Shop;
     })
     .filter((shop) => shop.latitude !== 0 && shop.longitude !== 0);
+
+  return sortShopsByDistance(shops, location);
 }
 
 export async function searchShops(query: string): Promise<Shop[]> {
+  const location = await getStoredLocation();
+
   if (!isSupabaseConfigured) {
-    return mockShops.filter((shop) =>
-      [shop.name, shop.region, shop.ownerName ?? ""].some((field) =>
-        field.toLowerCase().includes(query.toLowerCase())
-      )
+    return sortShopsByDistance(
+      mockShops.filter((shop) =>
+        [shop.name, shop.region, shop.ownerName ?? ""].some((field) =>
+          field.toLowerCase().includes(query.toLowerCase())
+        )
+      ),
+      location
     );
   }
 
@@ -92,7 +114,7 @@ export async function searchShops(query: string): Promise<Shop[]> {
 
   if (error) throw error;
 
-  return ((data ?? []) as ShopRow[])
+  const shops = ((data ?? []) as ShopRow[])
     .map((row) => {
       const firstLocation = row.locations?.[0];
       const region = singleRelation(row.region)?.name ?? "Unassigned";
@@ -111,6 +133,8 @@ export async function searchShops(query: string): Promise<Shop[]> {
       } satisfies Shop;
     })
     .filter((shop) => shop.latitude !== 0 && shop.longitude !== 0);
+
+  return sortShopsByDistance(shops, location);
 }
 
 export async function getRegions(): Promise<Region[]> {
@@ -167,6 +191,91 @@ export async function getRecentOrders(): Promise<Order[]> {
     totalAmount: Number(row.total_amount),
     status: row.status
   }));
+}
+
+export async function getOrderById(orderId: string): Promise<OrderDetail | null> {
+  if (!isSupabaseConfigured) {
+    const mockOrder = mockOrders.find((order) => String(order.id) === String(orderId));
+    if (!mockOrder) return null;
+
+    return {
+      ...mockOrder,
+      shopId: null,
+      paidAmount: 0,
+      notes: "Mock order details are not editable.",
+      items: []
+    };
+  }
+
+  const numericId = Number(orderId);
+  const queryId = Number.isNaN(numericId) ? orderId : numericId;
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select(
+      "id,total_amount,paid_amount,status,createdat,notes,shop:shops(id,name),order_items(id,quantity,unit_price,line_total,product:products(name))"
+    )
+    .eq("id", queryId)
+    .maybeSingle();
+
+  if (error && !isMissingTableError(error)) throw error;
+  if (!data) return null;
+
+  const orderRow = data as {
+    id: string | number;
+    total_amount: string | number;
+    paid_amount: string | number | null;
+    status: Order["status"];
+    createdat: string;
+    notes?: string | null;
+    shop?: { id?: string | null | number; name?: string | null } | null;
+    order_items?: Array<{
+      id: string | number;
+      quantity: string | number;
+      unit_price: string | number;
+      line_total: string | number;
+      product?: { name?: string | null } | null;
+    }> | null;
+  };
+
+  return {
+    id: String(orderRow.id),
+    shopId: orderRow.shop?.id ? String(orderRow.shop.id) : null,
+    shopName: orderRow.shop?.name ?? "Shop",
+    createdAt: orderRow.createdat,
+    totalAmount: Number(orderRow.total_amount),
+    paidAmount: Number(orderRow.paid_amount ?? 0),
+    status: orderRow.status,
+    notes: orderRow.notes ?? null,
+    items: (orderRow.order_items ?? []).map((item) => ({
+      id: String(item.id),
+      productName: item.product?.name ?? "Product",
+      quantity: Number(item.quantity),
+      unitPrice: Number(item.unit_price),
+      lineTotal: Number(item.line_total)
+    }))
+  };
+}
+
+export async function updateOrderStatus(orderId: string, status: Order["status"]) {
+  if (!isSupabaseConfigured) return { id: orderId };
+
+  const numericId = Number(orderId);
+  const orderFilter = Number.isNaN(numericId) ? orderId : numericId;
+
+  const { data, error } = await supabase
+    .from("orders")
+    .update({ status })
+    .eq("id", orderFilter)
+    .select("id")
+    .single();
+
+  if (isMissingTableError(error)) {
+    throw new Error("Order update is not available in this Supabase project yet.");
+  }
+  if (error) throw error;
+
+  return data;
 }
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
@@ -289,6 +398,7 @@ export async function getActivities(): Promise<Activity[]> {
 type CreateOrderInput = {
   shopId: string;
   notes?: string;
+  paymentMethod: "cash" | "credit";
   items: Array<{
     productId: string;
     quantity: number;
@@ -302,14 +412,16 @@ export async function createOrder(input: CreateOrderInput) {
 
   const totalAmount = input.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   const salesUser = await getStoredSalesUser();
+  const orderStatus = input.paymentMethod === "cash" ? "Cleared" : "Pending";
+
   const { data: order, error } = await supabase
     .from("orders")
     .insert({
       shopid: Number(input.shopId),
       sold_by_id: salesUser?.id ?? null,
       total_amount: totalAmount,
-      paid_amount: 0,
-      status: "Pending"
+      paid_amount: input.paymentMethod === "cash" ? totalAmount : 0,
+      status: orderStatus
     })
     .select("id")
     .single();

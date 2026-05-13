@@ -18,19 +18,21 @@ import { distanceMeters, isInsideVisitRadius } from "@/utils/geo";
 export default function ShopsScreen() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const { location, error } = useCurrentLocation();
+  const { location, error } = useCurrentLocation({ refreshOnMount: false });
 
-  const shopsQuery = useQuery({
+  const shopsQuery = useQuery<Shop[], Error>({
     queryKey: ["shops"],
     queryFn: getShops,
+    staleTime: Infinity,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     refetchOnMount: false
   });
 
-  const searchQuery = useQuery({
+  const searchQuery = useQuery<Shop[], Error>({
     queryKey: ["shops", "search", search],
     queryFn: () => searchShops(search),
+    staleTime: Infinity,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     refetchOnMount: false,

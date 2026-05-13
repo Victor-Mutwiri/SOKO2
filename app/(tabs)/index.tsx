@@ -9,14 +9,14 @@ import { OrderRow } from "@/components/order-row";
 import { PrimaryButton } from "@/components/primary-button";
 import { ScreenSection } from "@/components/screen-section";
 import { TargetProgressCard } from "@/components/target-progress-card";
-import { colors, radii, spacing } from "@/constants/theme";
+import { colors, spacing } from "@/constants/theme";
 import { useAuth } from "../../providers/auth-provider";
 import { useWorkSession } from "../../providers/work-session-provider";
 import { getDashboardSummary, getRecentOrders } from "@/services/supabase-queries";
 
 export default function DashboardScreen() {
   const { user } = useAuth();
-  const { isActive, wasSessionRestored } = useWorkSession();
+  const { isActive } = useWorkSession();
   const summaryQuery = useQuery({ queryKey: ["dashboard-summary"], queryFn: getDashboardSummary });
   const ordersQuery = useQuery({ queryKey: ["recent-orders"], queryFn: getRecentOrders });
   const refreshing = summaryQuery.isFetching || ordersQuery.isFetching;
@@ -58,7 +58,7 @@ export default function DashboardScreen() {
             Hello, {user?.firstName ?? "there"}. Fruitful selling.
           </Text>
           <Text selectable style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
-            Track today's sales, visits, and progress against your target.
+            Track today&apos;s sales, visits, and progress against your target.
           </Text>
         </View>
 
@@ -94,7 +94,13 @@ export default function DashboardScreen() {
 
         <ScreenSection title="Recent orders">
           {ordersQuery.data?.length ? (
-            ordersQuery.data.map((order) => <OrderRow key={order.id} order={order} />)
+            ordersQuery.data.map((order) => (
+              <OrderRow
+                key={order.id}
+                order={order}
+                onPress={() => router.push({ pathname: "/order/[orderId]", params: { orderId: order.id } })}
+              />
+            ))
           ) : (
             <EmptyState title="No orders yet" body="Orders created today will appear here." />
           )}

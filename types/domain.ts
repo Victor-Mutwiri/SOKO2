@@ -36,6 +36,21 @@ export type Order = {
   status: "Pending" | "Partially Paid" | "Cleared";
 };
 
+export type OrderItem = {
+  id: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+};
+
+export type OrderDetail = Order & {
+  shopId: string | null;
+  paidAmount: number;
+  notes?: string | null;
+  items: OrderItem[];
+};
+
 export type Activity = {
   id: string;
   type: "visit" | "order" | "shop_onboarding" | "geofence";

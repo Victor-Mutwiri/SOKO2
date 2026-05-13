@@ -22,6 +22,7 @@ export default function SellScreen() {
   const { shopId } = useLocalSearchParams<{ shopId?: string }>();
   const queryClient = useQueryClient();
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "credit">("cash");
   const [cart, setCart] = useState<Cart>({});
   const [notes, setNotes] = useState("");
   const shopsQuery = useQuery({ queryKey: ["shops"], queryFn: getShops });
@@ -58,6 +59,7 @@ export default function SellScreen() {
     mutationFn: () =>
       createOrder({
         shopId: selectedShop?.id ?? "",
+        paymentMethod,
         notes,
         items: items.map(({ product, quantity }) => ({
           productId: product.id,
@@ -151,6 +153,31 @@ export default function SellScreen() {
         ) : (
           <EmptyState title="No products loaded" body="Products from Supabase will appear here." />
         )}
+      </View>
+
+      <View style={{ gap: spacing.md }}>
+        <Text selectable style={{ color: colors.text, fontSize: 20, fontWeight: "800" }}>
+          Payment method
+        </Text>
+        <View style={{ flexDirection: "row", gap: spacing.sm }}>
+          <PrimaryButton
+            label="Cash"
+            variant={paymentMethod === "cash" ? "secondary" : "primary"}
+            onPress={() => setPaymentMethod("cash")}
+            style={{ flex: 1 }}
+          />
+          <PrimaryButton
+            label="Credit"
+            variant={paymentMethod === "credit" ? "secondary" : "primary"}
+            onPress={() => setPaymentMethod("credit")}
+            style={{ flex: 1 }}
+          />
+        </View>
+        <Text selectable style={{ color: colors.muted, fontSize: 13, lineHeight: 18 }}>
+          {paymentMethod === "cash"
+            ? "Cash orders are marked as cleared immediately."
+            : "Credit orders are marked as pending until payment is confirmed."}
+        </Text>
       </View>
 
       <TextInput
