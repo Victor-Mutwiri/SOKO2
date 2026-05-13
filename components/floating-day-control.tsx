@@ -11,7 +11,7 @@ export function FloatingDayControl() {
   const [isBusy, setIsBusy] = useState(false);
   const isActive = session?.status === "active";
   const isPaused = session?.status === "paused";
-  const label = isActive ? "End day" : isPaused ? "Resume" : "Start day";
+  const label = isActive ? "Close day" : isPaused ? "Resume" : "Start day";
   const icon = isActive ? "stop-circle-outline" : isPaused ? "play-circle-outline" : "play-circle-outline";
 
   const handlePress = async () => {

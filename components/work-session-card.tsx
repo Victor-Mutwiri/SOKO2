@@ -17,7 +17,7 @@ export function WorkSessionCard() {
 
   const title = isActive ? "Clocked in" : isPaused ? "Paused" : "Rest now";
   const description = isActive
-    ? "Your selling day is active. Sales and shop actions are unlocked."
+    ? "Your selling day is active. Close day when finished."
     : isPaused
       ? "Activity was paused after the app stayed inactive for too long."
       : getWorkdayMessage();
@@ -80,11 +80,11 @@ export function WorkSessionCard() {
       </View>
 
       {isActive ? (
-        <PrimaryButton label={isBusy ? "Clocking out..." : "Clock out"} icon="clock-out" variant="secondary" disabled={isBusy} onPress={() => handleAction("clock-out")} />
+        <PrimaryButton label={isBusy ? "Closing day..." : "Close day"} icon="clock-out" variant="secondary" disabled={isBusy} onPress={() => handleAction("clock-out")} />
       ) : isPaused ? (
         <PrimaryButton label={isBusy ? "Resuming..." : "Resume activity"} icon="play" disabled={isBusy} onPress={() => handleAction("resume")} />
       ) : (
-        <PrimaryButton label={isBusy ? "Clocking in..." : "Clock in"} icon="clock-in" disabled={!canClockIn || isBusy} onPress={() => handleAction("clock-in")} />
+        <PrimaryButton label={isBusy ? "Clocking in..." : "Start day"} icon="clock-in" disabled={!canClockIn || isBusy} onPress={() => handleAction("clock-in")} />
       )}
     </View>
   );

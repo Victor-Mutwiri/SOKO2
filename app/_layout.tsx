@@ -56,6 +56,7 @@ function RootStack() {
         }}
       >
         <Stack.Screen name="sign-in" options={{ title: "Sign in", headerShown: false }} />
+        <Stack.Screen name="setup" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="notifications" options={{ title: "Notifications", presentation: "card" }} />
         <Stack.Screen name="settings" options={{ title: "Settings", presentation: "card" }} />

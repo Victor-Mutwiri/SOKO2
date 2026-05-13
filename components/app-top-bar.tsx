@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, router } from "expo-router";
+import { Link, router, useSegments } from "expo-router";
 import { useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,9 +21,13 @@ export function AppTopBar() {
   });
   const unreadCount = notificationsQuery.data ?? 0;
 
-  const refresh = async () => {
-    await queryClient.invalidateQueries();
+  const segments = useSegments();
+  const currentSegment = segments[segments.length - 1] ?? "";
+  const currentPath = currentSegment === "shops" ? "/shops" : currentSegment === "activity" ? "/activity" : currentSegment === "support" ? "/support" : "/";
+
+  const refresh = () => {
     setMenuOpen(false);
+    router.push(`/setup?returnTo=${encodeURIComponent(currentPath)}`);
   };
 
   return (

@@ -1,8 +1,8 @@
 import { WorkSession } from "@/types/domain";
 
 export const WORKDAY_START_HOUR = 6;
-export const WORKDAY_END_HOUR = 18;
-export const WORKDAY_END_MINUTE = 30;
+export const WORKDAY_END_HOUR = 19;
+export const WORKDAY_END_MINUTE = 0;
 export const BACKGROUND_PAUSE_MS = 20 * 60 * 1000;
 
 export function getWorkdayWindow(now = new Date()) {

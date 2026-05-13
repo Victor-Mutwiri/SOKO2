@@ -4,11 +4,12 @@ import React from "react";
 
 import { getStoredSalesUser, signInSalesUser, signOutSalesUser } from "@/services/auth-session";
 import { SalesUser } from "@/types/domain";
+import { AppSetupProvider } from "@/providers/app-setup-provider";
 
 type AuthContextValue = {
   user: SalesUser | null;
   isLoading: boolean;
-  signIn: (username: string, code: string) => Promise<void>;
+  signIn: (username: string, code: string, returnTo?: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -28,10 +29,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       isLoading,
-      signIn: async (username, code) => {
+      signIn: async (username, code, returnTo) => {
         const nextUser = await signInSalesUser(username, code);
         setUser(nextUser);
-        router.replace("/");
+        router.replace(returnTo ? String(returnTo) : "/");
       },
       signOut: async () => {
         await signOutSalesUser();
@@ -42,7 +43,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [isLoading, user]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      <AppSetupProvider user={user}>{children}</AppSetupProvider>
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

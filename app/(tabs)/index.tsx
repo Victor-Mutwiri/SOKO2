@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
 
 import { EmptyState } from "@/components/empty-state";
@@ -28,14 +28,11 @@ export default function DashboardScreen() {
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => {
-            summaryQuery.refetch();
-            ordersQuery.refetch();
-          }} />
+          <RefreshControl refreshing={refreshing} onRefresh={() => router.push("/setup?returnTo=/")} />
         }
         contentContainerStyle={{ padding: spacing.lg, paddingBottom: 168, gap: spacing.lg }}
       >
-        {wasSessionRestored && isActive ? (
+        {/* {wasSessionRestored && isActive ? (
           <View
             style={{
               backgroundColor: colors.blueSoft,
@@ -54,7 +51,7 @@ export default function DashboardScreen() {
               Your work session has been restored. You remain clocked in and your time continues to be tracked. No need to clock in again.
             </Text>
           </View>
-        ) : null}
+        ) : null} */}
 
         <View style={{ gap: spacing.sm }}>
           <Text selectable style={{ color: colors.text, fontSize: 30, fontWeight: "900" }}>

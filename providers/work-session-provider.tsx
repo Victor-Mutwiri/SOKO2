@@ -22,6 +22,7 @@ type WorkSessionContextValue = {
   isActive: boolean;
   canClockIn: boolean;
   wasSessionRestored: boolean;
+  refreshSession: () => Promise<void>;
   clockIn: () => Promise<void>;
   clockOut: () => Promise<void>;
   resume: () => Promise<void>;
@@ -31,46 +32,101 @@ type WorkSessionContextValue = {
 const WorkSessionContext = createContext<WorkSessionContextValue | null>(null);
 
 export function WorkSessionProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [session, setSession] = useState<WorkSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [wasSessionRestored, setWasSessionRestored] = useState(false);
   const backgroundedAt = useRef<number | null>(null);
 
+  const restoreSession = useCallback(async () => {
+    if (authLoading) return;
+
+    setIsLoading(true);
+    const storedSession = await getStoredWorkSession();
+
+    if (!user) {
+      await saveWorkSession(null);
+      setSession(null);
+      setWasSessionRestored(false);
+      setIsLoading(false);
+      return;
+    }
+
+    if (storedSession?.userId !== user.id) {
+      await saveWorkSession(null);
+      setSession(null);
+      setWasSessionRestored(false);
+      setIsLoading(false);
+      return;
+    }
+
+    if (storedSession.status === "active" && !isWithinWorkday()) {
+      const ended = await endWorkSession(storedSession, "auto_clocked_out", "outside_work_hours");
+      setSession(ended);
+      setWasSessionRestored(false);
+      setIsLoading(false);
+      return;
+    }
+
+    if (storedSession && storedSession.status === "active") {
+      setWasSessionRestored(true);
+    } else {
+      setWasSessionRestored(false);
+    }
+
+    setSession(storedSession);
+    setIsLoading(false);
+  }, [authLoading, user]);
+
   useEffect(() => {
+    if (authLoading) return;
+
     let mounted = true;
 
-    getStoredWorkSession()
-      .then(async (storedSession) => {
+    (async () => {
+      const storedSession = await getStoredWorkSession();
+      if (!mounted) return;
+
+      if (!user) {
+        await saveWorkSession(null);
         if (!mounted) return;
+        setSession(null);
+        setWasSessionRestored(false);
+        setIsLoading(false);
+        return;
+      }
 
-        if (!user || storedSession?.userId !== user.id) {
-          await saveWorkSession(null);
-          setSession(null);
-          return;
-        }
+      if (storedSession?.userId !== user.id) {
+        await saveWorkSession(null);
+        if (!mounted) return;
+        setSession(null);
+        setWasSessionRestored(false);
+        setIsLoading(false);
+        return;
+      }
 
-        if (storedSession.status === "active" && !isWithinWorkday()) {
-          const ended = await endWorkSession(storedSession, "auto_clocked_out", "outside_work_hours");
-          setSession(ended);
-          return;
-        }
+      if (storedSession.status === "active" && !isWithinWorkday()) {
+        const ended = await endWorkSession(storedSession, "auto_clocked_out", "outside_work_hours");
+        if (!mounted) return;
+        setSession(ended);
+        setWasSessionRestored(false);
+        setIsLoading(false);
+        return;
+      }
 
-        if (storedSession && storedSession.status === "active") {
-          setWasSessionRestored(true);
-        }
-
-        setSession(storedSession);
-      })
-      .finally(() => {
-        if (mounted) setIsLoading(false);
-      });
+      if (storedSession && storedSession.status === "active") {
+        setWasSessionRestored(true);
+      }
+      if (!mounted) return;
+      setSession(storedSession);
+      setIsLoading(false);
+    })();
 
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [authLoading, user]);
 
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -141,6 +197,10 @@ export function WorkSessionProvider({ children }: { children: ReactNode }) {
     [session]
   );
 
+  const refreshSession = useCallback(async () => {
+    await restoreSession();
+  }, [restoreSession]);
+
   const value = useMemo<WorkSessionContextValue>(
     () => ({
       session,
@@ -149,12 +209,13 @@ export function WorkSessionProvider({ children }: { children: ReactNode }) {
       isActive: session?.status === "active",
       canClockIn: Boolean(user && isWithinWorkday() && (!session || session.status === "clocked_out" || session.status === "auto_clocked_out")),
       wasSessionRestored,
+      refreshSession,
       clockIn,
       clockOut,
       resume,
       pause
     }),
-    [clockIn, clockOut, elapsedMs, isLoading, pause, resume, session, user, wasSessionRestored]
+    [clockIn, clockOut, elapsedMs, isLoading, pause, refreshSession, resume, session, user, wasSessionRestored]
   );
 
   return <WorkSessionContext.Provider value={value}>{children}</WorkSessionContext.Provider>;

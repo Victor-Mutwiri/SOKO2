@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Redirect } from "expo-router";
+import { Redirect, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
 import { PrimaryButton } from "@/components/primary-button";
@@ -8,10 +8,13 @@ import { useAuth } from "../providers/auth-provider";
 
 export default function SignInScreen() {
   const { signIn, isLoading, user } = useAuth();
+  const params = useLocalSearchParams<{ returnTo?: string }>();
   const [username, setUsername] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const returnTo = params.returnTo ? String(params.returnTo) : "/";
 
   if (isLoading) {
     return (
@@ -21,7 +24,7 @@ export default function SignInScreen() {
     );
   }
 
-  if (user) return <Redirect href="/" />;
+  if (user) return <Redirect href={returnTo} />;
 
   const canSubmit = Boolean(username.trim() && code.trim() && !isSubmitting);
 
@@ -29,7 +32,7 @@ export default function SignInScreen() {
     setError(null);
     setIsSubmitting(true);
     try {
-      await signIn(username, code);
+      await signIn(username, code, returnTo);
     } catch (signInError) {
       setError(signInError instanceof Error ? signInError.message : "Could not sign in. Please try again.");
     } finally {

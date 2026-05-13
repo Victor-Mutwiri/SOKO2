@@ -5,9 +5,11 @@ import { ActivityIndicator, View } from "react-native";
 import { AppTopBar } from "@/components/app-top-bar";
 import { colors } from "@/constants/theme";
 import { useAuth } from "../../providers/auth-provider";
+import { useAppSetup } from "../../providers/app-setup-provider";
 
 export default function TabsLayout() {
   const { user, isLoading } = useAuth();
+  const { isSetupComplete } = useAppSetup();
 
   if (isLoading) {
     return (
@@ -18,6 +20,7 @@ export default function TabsLayout() {
   }
 
   if (!user) return <Redirect href="/sign-in" />;
+  if (!isSetupComplete) return <Redirect href="/setup" />;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>

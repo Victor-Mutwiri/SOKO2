@@ -1,5 +1,4 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -19,7 +18,7 @@ import { distanceMeters, isInsideVisitRadius } from "@/utils/geo";
 export default function ShopsScreen() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const { location, error, refresh } = useCurrentLocation();
+  const { location, error } = useCurrentLocation();
 
   const shopsQuery = useQuery({
     queryKey: ["shops"],
@@ -28,16 +27,6 @@ export default function ShopsScreen() {
     refetchOnReconnect: false,
     refetchOnMount: false
   });
-
-  useFocusEffect(
-    useMemo(
-      () => {
-        shopsQuery.refetch();
-        return () => {};
-      },
-      [shopsQuery]
-    )
-  );
 
   const searchQuery = useQuery({
     queryKey: ["shops", "search", search],
@@ -83,12 +72,7 @@ export default function ShopsScreen() {
         <RefreshControl
           refreshing={isLoading}
           onRefresh={() => {
-            if (isSearching) {
-              searchQuery.refetch();
-            } else {
-              shopsQuery.refetch();
-            }
-            refresh();
+            router.push("/setup?returnTo=/shops");
           }}
         />
       }
