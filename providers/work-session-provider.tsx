@@ -21,6 +21,7 @@ type WorkSessionContextValue = {
   elapsedMs: number;
   isActive: boolean;
   canClockIn: boolean;
+  wasSessionRestored: boolean;
   clockIn: () => Promise<void>;
   clockOut: () => Promise<void>;
   resume: () => Promise<void>;
@@ -34,6 +35,7 @@ export function WorkSessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<WorkSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [wasSessionRestored, setWasSessionRestored] = useState(false);
   const backgroundedAt = useRef<number | null>(null);
 
   useEffect(() => {
@@ -53,6 +55,10 @@ export function WorkSessionProvider({ children }: { children: ReactNode }) {
           const ended = await endWorkSession(storedSession, "auto_clocked_out", "outside_work_hours");
           setSession(ended);
           return;
+        }
+
+        if (storedSession && storedSession.status === "active") {
+          setWasSessionRestored(true);
         }
 
         setSession(storedSession);
@@ -104,6 +110,7 @@ export function WorkSessionProvider({ children }: { children: ReactNode }) {
     if (!user) throw new Error("Sign in before clocking in.");
 
     const nextSession = await startWorkSession(user.id);
+    setWasSessionRestored(false);
     setSession(nextSession);
   }, [user]);
 
@@ -111,6 +118,7 @@ export function WorkSessionProvider({ children }: { children: ReactNode }) {
     if (!session) return;
 
     const ended = await endWorkSession(session, "clocked_out", "manual_clock_out");
+    setWasSessionRestored(false);
     setSession(ended);
   }, [session]);
 
@@ -118,6 +126,7 @@ export function WorkSessionProvider({ children }: { children: ReactNode }) {
     if (!session) return;
 
     const nextSession = await resumeWorkSession(session);
+    setWasSessionRestored(false);
     setSession(nextSession);
   }, [session]);
 
@@ -126,6 +135,7 @@ export function WorkSessionProvider({ children }: { children: ReactNode }) {
       if (!session) return;
 
       const nextSession = await pauseWorkSession(session, reason);
+      setWasSessionRestored(false);
       setSession(nextSession);
     },
     [session]
@@ -138,19 +148,20 @@ export function WorkSessionProvider({ children }: { children: ReactNode }) {
       elapsedMs,
       isActive: session?.status === "active",
       canClockIn: Boolean(user && isWithinWorkday() && (!session || session.status === "clocked_out" || session.status === "auto_clocked_out")),
+      wasSessionRestored,
       clockIn,
       clockOut,
       resume,
       pause
     }),
-    [clockIn, clockOut, elapsedMs, isLoading, pause, resume, session, user]
+    [clockIn, clockOut, elapsedMs, isLoading, pause, resume, session, user, wasSessionRestored]
   );
 
   return <WorkSessionContext.Provider value={value}>{children}</WorkSessionContext.Provider>;
 }
 
 export function useWorkSession() {
-  const value = React.use(WorkSessionContext);
+  const value = React.useContext(WorkSessionContext);
   if (!value) throw new Error("useWorkSession must be used inside WorkSessionProvider");
   return value;
 }

@@ -7,7 +7,13 @@ import { colors, spacing } from "@/constants/theme";
 import { getActivities } from "@/services/supabase-queries";
 
 export default function ActivityScreen() {
-  const activityQuery = useQuery({ queryKey: ["activities"], queryFn: getActivities });
+  const activityQuery = useQuery({
+    queryKey: ["activities"],
+    queryFn: getActivities,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false
+  });
 
   return (
     <ScrollView

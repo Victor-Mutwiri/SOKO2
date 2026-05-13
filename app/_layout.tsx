@@ -16,8 +16,12 @@ export default function RootLayout() {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 1000 * 60 * 3,
-            retry: 2
+            staleTime: 1000 * 60 * 5,
+            cacheTime: 1000 * 60 * 15,
+            retry: 2,
+            refetchOnWindowFocus: false,
+            refetchOnReconnect: false,
+            refetchOnMount: false
           }
         }
       })

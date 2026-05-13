@@ -47,3 +47,5 @@ Manager notifications use `sales_notifications`. Set `userid` for a rep-specific
 Support form submissions use `support_requests`. Reps can also call or WhatsApp `0746583509` directly from the app.
 
 Sales and visit targets use `sales_targets`. Leave `userid` as `NULL` for a general target, or set `userid` to assign a stronger or lighter target to one rep.
+
+Manual shop visits use `sales_shop_visits`, which feeds the daily and weekly visit target progress.

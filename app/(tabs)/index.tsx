@@ -3,19 +3,20 @@ import { Link } from "expo-router";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
 
 import { EmptyState } from "@/components/empty-state";
+import { FloatingDayControl } from "@/components/floating-day-control";
 import { MetricCard } from "@/components/metric-card";
 import { OrderRow } from "@/components/order-row";
 import { PrimaryButton } from "@/components/primary-button";
 import { ScreenSection } from "@/components/screen-section";
 import { TargetProgressCard } from "@/components/target-progress-card";
-import { colors, spacing } from "@/constants/theme";
+import { colors, radii, spacing } from "@/constants/theme";
 import { useAuth } from "../../providers/auth-provider";
 import { useWorkSession } from "../../providers/work-session-provider";
 import { getDashboardSummary, getRecentOrders } from "@/services/supabase-queries";
 
 export default function DashboardScreen() {
   const { user } = useAuth();
-  const { isActive } = useWorkSession();
+  const { isActive, wasSessionRestored } = useWorkSession();
   const summaryQuery = useQuery({ queryKey: ["dashboard-summary"], queryFn: getDashboardSummary });
   const ordersQuery = useQuery({ queryKey: ["recent-orders"], queryFn: getRecentOrders });
   const refreshing = summaryQuery.isFetching || ordersQuery.isFetching;
@@ -34,12 +35,33 @@ export default function DashboardScreen() {
         }
         contentContainerStyle={{ padding: spacing.lg, paddingBottom: 168, gap: spacing.lg }}
       >
+        {wasSessionRestored && isActive ? (
+          <View
+            style={{
+              backgroundColor: colors.blueSoft,
+              borderColor: colors.pepsiBlue,
+              borderWidth: 1,
+              borderRadius: radii.md,
+              padding: spacing.md,
+              gap: spacing.xs,
+              borderCurve: "continuous"
+            }}
+          >
+            <Text selectable style={{ color: colors.pepsiBlue, fontWeight: "800" }}>
+              Session restored
+            </Text>
+            <Text selectable style={{ color: colors.text, fontSize: 13, lineHeight: 18 }}>
+              Your work session has been restored. You remain clocked in and your time continues to be tracked. No need to clock in again.
+            </Text>
+          </View>
+        ) : null}
+
         <View style={{ gap: spacing.sm }}>
           <Text selectable style={{ color: colors.text, fontSize: 30, fontWeight: "900" }}>
             Hello, {user?.firstName ?? "there"}. Fruitful selling.
           </Text>
           <Text selectable style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
-            Track today’s sales, visits, and progress against your target.
+            Track today's sales, visits, and progress against your target.
           </Text>
         </View>
 
@@ -81,6 +103,8 @@ export default function DashboardScreen() {
           )}
         </ScreenSection>
       </ScrollView>
+      <FloatingDayControl />
     </View>
   );
 }
+

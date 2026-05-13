@@ -8,9 +8,15 @@ export type Shop = Coordinates & {
   name: string;
   ownerName?: string | null;
   phone?: string | null;
+  regionId?: number | null;
   region: string;
   status: "active" | "pending" | "inactive";
   visitRadiusMeters?: number | null;
+};
+
+export type Region = {
+  id: number;
+  name: string;
 };
 
 export type Product = {

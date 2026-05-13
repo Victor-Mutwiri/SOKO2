@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
 import { EmptyState } from "@/components/empty-state";
@@ -18,6 +19,7 @@ import { isInsideVisitRadius } from "@/utils/geo";
 type Cart = Record<string, number>;
 
 export default function SellScreen() {
+  const { shopId } = useLocalSearchParams<{ shopId?: string }>();
   const queryClient = useQueryClient();
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [cart, setCart] = useState<Cart>({});
@@ -27,6 +29,13 @@ export default function SellScreen() {
   const { location, error: locationError, refresh } = useCurrentLocation();
 
   const products = useMemo(() => productsQuery.data ?? [], [productsQuery.data]);
+  useEffect(() => {
+    if (!shopId || selectedShop) return;
+
+    const shop = shopsQuery.data?.find((item) => item.id === shopId);
+    if (shop) setSelectedShop(shop);
+  }, [shopId, selectedShop, shopsQuery.data]);
+
   const geofence = selectedShop && location ? isInsideVisitRadius(location, selectedShop) : null;
   const total = useMemo(
     () =>

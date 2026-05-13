@@ -1,4 +1,4 @@
-import { Activity, DashboardSummary, Order, Product, Shop } from "@/types/domain";
+import { Activity, DashboardSummary, Order, Product, Region, Shop } from "@/types/domain";
 
 import { mockActivities, mockOrders, mockProducts, mockShops, mockSummary } from "./mock-data";
 import { getStoredSalesUser } from "./auth-session";
@@ -11,6 +11,7 @@ type ShopRow = {
   name: string;
   ownerName: string | null;
   ownerMobile: string | null;
+  regionId: number | null;
   region?: { name?: string | null } | Array<{ name?: string | null }> | null;
   locations?: Array<{ latitude: string | number; longitude: string | number; name: string | null }> | null;
 };
@@ -45,7 +46,7 @@ export async function getShops(): Promise<Shop[]> {
 
   const { data, error } = await supabase
     .from("shops")
-    .select("id,name,ownerName,ownerMobile,region:regions(name),locations(latitude,longitude,name)")
+    .select("id,name,ownerName,ownerMobile,regionId,region:regions(name),locations(latitude,longitude,name)")
     .order("name", { ascending: true });
 
   if (error) throw error;
@@ -60,6 +61,7 @@ export async function getShops(): Promise<Shop[]> {
         name: row.name,
         ownerName: row.ownerName,
         phone: row.ownerMobile,
+        regionId: row.regionId,
         region,
         latitude: Number(firstLocation?.latitude ?? 0),
         longitude: Number(firstLocation?.longitude ?? 0),
@@ -68,6 +70,61 @@ export async function getShops(): Promise<Shop[]> {
       } satisfies Shop;
     })
     .filter((shop) => shop.latitude !== 0 && shop.longitude !== 0);
+}
+
+export async function searchShops(query: string): Promise<Shop[]> {
+  if (!isSupabaseConfigured) {
+    return mockShops.filter((shop) =>
+      [shop.name, shop.region, shop.ownerName ?? ""].some((field) =>
+        field.toLowerCase().includes(query.toLowerCase())
+      )
+    );
+  }
+
+  if (!query.trim()) return getShops();
+
+  const searchTerm = query.trim().toLowerCase();
+
+  const { data, error } = await supabase
+    .from("shops")
+    .select("id,name,ownerName,ownerMobile,regionId,region:regions(name),locations(latitude,longitude,name)")
+    .or(`name.ilike.%${searchTerm}%,ownerName.ilike.%${searchTerm}%`);
+
+  if (error) throw error;
+
+  return ((data ?? []) as ShopRow[])
+    .map((row) => {
+      const firstLocation = row.locations?.[0];
+      const region = singleRelation(row.region)?.name ?? "Unassigned";
+
+      return {
+        id: String(row.id),
+        name: row.name,
+        ownerName: row.ownerName,
+        phone: row.ownerMobile,
+        regionId: row.regionId,
+        region,
+        latitude: Number(firstLocation?.latitude ?? 0),
+        longitude: Number(firstLocation?.longitude ?? 0),
+        status: firstLocation ? "active" : "pending",
+        visitRadiusMeters: null
+      } satisfies Shop;
+    })
+    .filter((shop) => shop.latitude !== 0 && shop.longitude !== 0);
+}
+
+export async function getRegions(): Promise<Region[]> {
+  if (!isSupabaseConfigured) {
+    return [
+      { id: 1, name: "MOUNTAIN" },
+      { id: 4, name: "NAIROBI" }
+    ];
+  }
+
+  const { data, error } = await supabase.from("regions").select("id,name").order("name", { ascending: true });
+  if (error) throw error;
+
+  return (data ?? []).map((row) => ({ id: Number(row.id), name: row.name }));
 }
 
 export async function getProducts(): Promise<Product[]> {
@@ -120,10 +177,17 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   today.setHours(0, 0, 0, 0);
   const weekStart = getWeekStart(new Date());
 
-  const { data: orders, error: ordersError } = await supabase
+  const [ordersResult, visitsResult] = await Promise.all([
+    supabase
     .from("orders")
     .select("id,total_amount,status,shopid,createdat")
-    .gte("createdat", weekStart.toISOString());
+      .gte("createdat", weekStart.toISOString()),
+    supabase
+      .from("sales_shop_visits")
+      .select("id,shopid,createdat")
+      .gte("createdat", weekStart.toISOString())
+  ]);
+  const { data: orders, error: ordersError } = ordersResult;
 
   if (isMissingTableError(ordersError)) {
     return {
@@ -140,11 +204,20 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     };
   }
   if (ordersError) throw ordersError;
+  if (visitsResult.error && !isMissingTableError(visitsResult.error)) throw visitsResult.error;
 
   const weeklyOrders = orders ?? [];
   const todayOrders = weeklyOrders.filter((order) => new Date(order.createdat) >= today);
-  const visitedToday = new Set(todayOrders.map((order) => order.shopid).filter(Boolean));
-  const visitedThisWeek = new Set(weeklyOrders.map((order) => order.shopid).filter(Boolean));
+  const weeklyVisits = visitsResult.error ? [] : visitsResult.data ?? [];
+  const todayVisits = weeklyVisits.filter((visit) => new Date(visit.createdat) >= today);
+  const visitedToday = new Set([
+    ...todayOrders.map((order) => order.shopid),
+    ...todayVisits.map((visit) => visit.shopid)
+  ].filter(Boolean));
+  const visitedThisWeek = new Set([
+    ...weeklyOrders.map((order) => order.shopid),
+    ...weeklyVisits.map((visit) => visit.shopid)
+  ].filter(Boolean));
   const targets = await getSalesTargets(salesUser?.id ?? null);
 
   return {
@@ -265,7 +338,7 @@ type CreateShopInput = {
   name: string;
   ownerName?: string;
   phone: string;
-  region: string;
+  regionId: number;
   latitude: number;
   longitude: number;
 };
@@ -274,22 +347,24 @@ export async function createShop(input: CreateShopInput) {
   if (!isSupabaseConfigured) return { id: `mock-shop-${Date.now()}` };
   await assertActiveWorkSession();
 
-  const regionId = await getOrCreateRegionId(input.region);
+  const shopId = await getNextNumericId("shops");
   const { data: shop, error: shopError } = await supabase
     .from("shops")
     .insert({
+      id: shopId,
       name: input.name,
       ownerName: input.ownerName || null,
       ownerMobile: input.phone,
-      regionId: regionId,
-      direction: input.region
+      regionId: input.regionId
     })
     .select("id")
     .single();
 
   if (shopError) throw shopError;
 
+  const locationId = await getNextNumericId("locations");
   const { error: locationError } = await supabase.from("locations").insert({
+    id: locationId,
     shopId: shop.id,
     latitude: input.latitude,
     longitude: input.longitude,
@@ -301,29 +376,26 @@ export async function createShop(input: CreateShopInput) {
   return shop;
 }
 
-async function getOrCreateRegionId(name: string) {
-  const trimmedName = name.trim();
-  if (!trimmedName) return null;
+export async function markShopVisit(shopId: string) {
+  if (!isSupabaseConfigured) return { id: `mock-visit-${Date.now()}` };
+  await assertActiveWorkSession();
 
-  const { data: existing, error: selectError } = await supabase
-    .from("regions")
-    .select("id")
-    .ilike("name", trimmedName)
-    .limit(1)
-    .maybeSingle();
-
-  if (selectError) throw selectError;
-  if (existing?.id) return existing.id;
-
-  const { data: created, error: insertError } = await supabase
-    .from("regions")
-    .insert({ name: trimmedName })
+  const salesUser = await getStoredSalesUser();
+  const { data, error } = await supabase
+    .from("sales_shop_visits")
+    .insert({
+      shopid: Number(shopId),
+      userid: salesUser?.id ?? null
+    })
     .select("id")
     .single();
 
-  if (insertError) throw insertError;
+  if (isMissingTableError(error)) {
+    throw new Error("Shop visit tracking is not enabled yet. Run the latest mobile SQL additions in Supabase.");
+  }
+  if (error) throw error;
 
-  return created.id;
+  return data;
 }
 
 function singleRelation<T>(value: T | T[] | null | undefined): T | null {
@@ -383,4 +455,11 @@ function getWeekStart(value: Date) {
   date.setDate(date.getDate() + diff);
   date.setHours(0, 0, 0, 0);
   return date;
+}
+
+async function getNextNumericId(table: "shops" | "locations") {
+  const { data, error } = await supabase.from(table).select("id").order("id", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw error;
+
+  return Number(data?.id ?? 0) + 1;
 }

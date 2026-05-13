@@ -79,3 +79,10 @@ CREATE TABLE IF NOT EXISTS public.sales_targets (
     isactive BOOLEAN DEFAULT true,
     createdat TIMESTAMPTZ DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS public.sales_shop_visits (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    shopid BIGINT REFERENCES public.shops(id),
+    userid UUID REFERENCES public.users(id),
+    createdat TIMESTAMPTZ DEFAULT now()
+);

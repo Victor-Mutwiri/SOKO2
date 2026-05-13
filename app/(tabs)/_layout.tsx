@@ -3,7 +3,6 @@ import { Redirect, Tabs } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
 
 import { AppTopBar } from "@/components/app-top-bar";
-import { FloatingDayControl } from "@/components/floating-day-control";
 import { colors } from "@/constants/theme";
 import { useAuth } from "../../providers/auth-provider";
 
@@ -24,6 +23,7 @@ export default function TabsLayout() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <AppTopBar />
       <Tabs
+        lazy={false}
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: colors.pepsiBlue,
@@ -54,15 +54,13 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="sell"
           options={{
-            title: "Sell",
-            tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="cart-outline" color={color} size={size} />
+            href: null
           }}
         />
         <Tabs.Screen
           name="new-shop"
           options={{
-            title: "Onboard",
-            tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="plus-circle-outline" color={color} size={size} />
+            href: null
           }}
         />
         <Tabs.Screen
@@ -73,7 +71,6 @@ export default function TabsLayout() {
           }}
         />
       </Tabs>
-      <FloatingDayControl />
     </View>
   );
 }
