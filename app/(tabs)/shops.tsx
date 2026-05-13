@@ -1,13 +1,12 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type UseQueryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { useMemo, useState } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
+import { useCallback, useMemo, useState } from "react";
+import { Alert, FlatList, Pressable, Text, TextInput, View } from "react-native";
 
 import { EmptyState } from "@/components/empty-state";
 import { OperationLock } from "@/components/operation-lock";
-import { ScreenSection } from "@/components/screen-section";
 import { ShopCard } from "@/components/shop-card";
 import { colors, radii, spacing } from "@/constants/theme";
 import { useCurrentLocation } from "@/hooks/use-current-location";
@@ -16,7 +15,9 @@ import { Shop } from "@/types/domain";
 import { distanceMeters, isInsideVisitRadius } from "@/utils/geo";
 
 export default function ShopsScreen() {
+  console.log("ShopsScreen: Component mounting");
   const queryClient = useQueryClient();
+  console.log("ShopsScreen: Cached shops data length:", queryClient.getQueryData<Shop[]>(["shops"])?.length || 0);
   const [search, setSearch] = useState("");
   const { location, error } = useCurrentLocation({ refreshOnMount: false });
 
@@ -26,8 +27,14 @@ export default function ShopsScreen() {
     staleTime: Infinity,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    refetchOnMount: false
-  });
+    refetchOnMount: false,
+    onSuccess: (data: Shop[]) => {
+      console.log("ShopsScreen: shopsQuery onSuccess, data length:", data.length);
+    },
+    onError: (queryError: unknown) => {
+      console.log("ShopsScreen: shopsQuery onError:", queryError);
+    }
+  } as UseQueryOptions<Shop[], Error>);
 
   const searchQuery = useQuery<Shop[], Error>({
     queryKey: ["shops", "search", search],
@@ -37,19 +44,27 @@ export default function ShopsScreen() {
     refetchOnReconnect: false,
     refetchOnMount: false,
     enabled: search.trim().length > 0
-  });
+  } as UseQueryOptions<Shop[], Error>);
 
   const isSearching = search.trim().length > 0;
   const isLoading = isSearching ? searchQuery.isLoading : shopsQuery.isLoading;
 
+  console.log("ShopsScreen: isLoading:", isLoading, "isSearching:", isSearching);
+
   const sortedShops = useMemo(() => {
-    const displayShops = isSearching ? searchQuery.data ?? [] : shopsQuery.data ?? [];
-    const shops = displayShops;
+    console.time("ShopsScreen: Sorting shops");
+    const displayShops = (isSearching ? searchQuery.data : shopsQuery.data) ?? [];
+    const shops = displayShops as Shop[];
+    console.log("ShopsScreen: Display shops length:", shops.length);
     if (!location) {
-      return [...shops].sort((a, b) => a.name.localeCompare(b.name));
+      const sorted = [...shops].sort((a, b) => a.name.localeCompare(b.name));
+      console.timeEnd("ShopsScreen: Sorting shops");
+      return sorted;
     }
 
-    return [...shops].sort((a, b) => distanceMeters(location, a) - distanceMeters(location, b));
+    const sorted = [...shops].sort((a, b) => distanceMeters(location, a) - distanceMeters(location, b));
+    console.timeEnd("ShopsScreen: Sorting shops");
+    return sorted;
   }, [isSearching, searchQuery.data, shopsQuery.data, location]);
 
   const visitMutation = useMutation({
@@ -65,22 +80,38 @@ export default function ShopsScreen() {
     }
   });
 
-  return (
-    <OperationLock>
-    <View style={{ flex: 1 }}>
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      refreshControl={
-        <RefreshControl
-          refreshing={isLoading}
-          onRefresh={() => {
-            router.push("/setup?returnTo=/shops");
-          }}
-        />
+  const handleSell = useCallback((selectedShop: Shop) => {
+    router.push({ pathname: "/sell", params: { shopId: selectedShop.id } });
+  }, []);
+
+  const handleVisit = useCallback(
+    (selectedShop: Shop) => {
+      if (!location) {
+        Alert.alert("Location required", "Refresh GPS before marking a shop visit.");
+        return;
       }
-      contentContainerStyle={{ padding: spacing.lg, paddingBottom: 168, gap: spacing.lg }}
-    >
-      <View style={{ gap: spacing.sm }}>
+
+      const geofence = isInsideVisitRadius(location, selectedShop);
+      if (!geofence.inside) {
+        Alert.alert("Move closer", `You are ${Math.round(geofence.distanceMeters)}m away. Required radius: ${geofence.radiusMeters}m.`);
+        return;
+      }
+
+      visitMutation.mutate(selectedShop);
+    },
+    [location, visitMutation]
+  );
+
+  const renderShop = useCallback(
+    ({ item }: { item: Shop }) => (
+      <ShopCard shop={item} location={location} onSell={handleSell} onVisit={handleVisit} />
+    ),
+    [handleSell, handleVisit, location]
+  );
+
+  const listHeader = (
+    <>
+      <View style={{ gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
         <Text selectable style={{ color: colors.text, fontSize: 28, fontWeight: "800" }}>
           Onboarded shops
         </Text>
@@ -89,7 +120,7 @@ export default function ShopsScreen() {
         </Text>
       </View>
 
-      <View style={{ gap: spacing.xs }}>
+      <View style={{ gap: spacing.xs, paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
         <TextInput
           value={search}
           onChangeText={setSearch}
@@ -107,66 +138,74 @@ export default function ShopsScreen() {
         />
       </View>
 
-      {error ? <Text selectable style={{ color: colors.danger }}>{error}</Text> : null}
+      {error ? (
+        <Text selectable style={{ color: colors.danger, paddingHorizontal: spacing.lg, paddingTop: spacing.sm }}>
+          {error}
+        </Text>
+      ) : null}
 
-      <ScreenSection title="Nearby outlets">
-        {sortedShops.length ? (
-          sortedShops.map((shop) => (
-            <ShopCard
-              key={shop.id}
-              shop={shop}
-              location={location}
-              onSell={(selectedShop) => router.push({ pathname: "/sell", params: { shopId: selectedShop.id } })}
-              onVisit={(selectedShop) => {
-                if (!location) {
-                  Alert.alert("Location required", "Refresh GPS before marking a shop visit.");
-                  return;
-                }
-
-                const geofence = isInsideVisitRadius(location, selectedShop);
-                if (!geofence.inside) {
-                  Alert.alert("Move closer", `You are ${Math.round(geofence.distanceMeters)}m away. Required radius: ${geofence.radiusMeters}m.`);
-                  return;
-                }
-
-                visitMutation.mutate(selectedShop);
-              }}
-            />
-          ))
-        ) : (
-          <EmptyState title="No shops found" body="Onboarded shops will appear here." />
-        )}
-      </ScreenSection>
-    </ScrollView>
-    <Pressable
-      onPress={() => router.push("/new-shop")}
-      style={({ pressed }) => ({
-        opacity: pressed ? 0.82 : 1,
-        position: "absolute",
-        alignSelf: "center",
-        bottom: 96,
-        alignItems: "center",
-        gap: spacing.xs
-      })}
-    >
-      <View
-        style={{
-          width: 58,
-          height: 58,
-          borderRadius: 29,
-          backgroundColor: colors.pepsiBlue,
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: "0 8px 18px rgba(16, 24, 40, 0.18)"
-        }}
-      >
-        <MaterialCommunityIcons name="plus" color={colors.surface} size={30} />
+      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm }}>
+        <Text selectable style={{ color: colors.text, fontSize: 20, fontWeight: "800" }}>
+          Nearby outlets
+        </Text>
       </View>
-      <View style={{ backgroundColor: colors.surface, borderRadius: radii.sm, paddingHorizontal: spacing.sm, paddingVertical: 3 }}>
-        <Text style={{ color: colors.text, fontSize: 12, fontWeight: "900" }}>Onboard</Text>
+    </>
+  );
+
+  return (
+    <OperationLock>
+      <View style={{ flex: 1 }}>
+        <FlatList
+          data={sortedShops}
+          keyExtractor={(shop) => shop.id}
+          renderItem={renderShop}
+          refreshing={isLoading}
+          onRefresh={() => {
+            router.push("/setup?returnTo=/shops");
+          }}
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={{ paddingBottom: 168 }}
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={
+            <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+              <EmptyState title="No shops found" body="Onboarded shops will appear here." />
+            </View>
+          }
+          ListFooterComponent={<View style={{ height: 120 }} />}
+          initialNumToRender={10}
+          maxToRenderPerBatch={15}
+          windowSize={11}
+        />
+
+        <Pressable
+          onPress={() => router.push("/new-shop")}
+          style={({ pressed }) => ({
+            opacity: pressed ? 0.82 : 1,
+            position: "absolute",
+            alignSelf: "center",
+            bottom: 96,
+            alignItems: "center",
+            gap: spacing.xs
+          })}
+        >
+          <View
+            style={{
+              width: 58,
+              height: 58,
+              borderRadius: 29,
+              backgroundColor: colors.pepsiBlue,
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 8px 18px rgba(16, 24, 40, 0.18)"
+            }}
+          >
+            <MaterialCommunityIcons name="plus" color={colors.surface} size={30} />
+          </View>
+          <View style={{ backgroundColor: colors.surface, borderRadius: radii.sm, paddingHorizontal: spacing.sm, paddingVertical: 3 }}>
+            <Text style={{ color: colors.text, fontSize: 12, fontWeight: "900" }}>Onboard</Text>
+          </View>
+        </Pressable>
       </View>
-    </Pressable>
-    </View>
     </OperationLock>
   );
 }

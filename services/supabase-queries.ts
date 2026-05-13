@@ -56,16 +56,30 @@ function sortShopsByDistance(shops: Shop[], referenceLocation: { latitude: numbe
 }
 
 export async function getShops(): Promise<Shop[]> {
+  console.log("getShops: Starting fetch");
+  console.time("getShops: Total time");
   const location = await getStoredLocation();
+  console.log("getShops: Stored location loaded");
 
-  if (!isSupabaseConfigured) return sortShopsByDistance(mockShops, location);
+  if (!isSupabaseConfigured) {
+    console.log("getShops: Using mock data");
+    console.timeEnd("getShops: Total time");
+    return sortShopsByDistance(mockShops, location);
+  }
 
+  console.log("getShops: Fetching from Supabase");
+  console.time("getShops: Supabase query");
   const { data, error } = await supabase
     .from("shops")
     .select("id,name,ownerName,ownerMobile,regionId,region:regions(name),locations(latitude,longitude,name)");
 
-  if (error) throw error;
+  console.timeEnd("getShops: Supabase query");
+  if (error) {
+    console.log("getShops: Supabase error:", error);
+    throw error;
+  }
 
+  console.log("getShops: Raw data length:", data?.length);
   const shops = ((data ?? []) as ShopRow[])
     .map((row) => {
       const firstLocation = row.locations?.[0];
@@ -86,7 +100,10 @@ export async function getShops(): Promise<Shop[]> {
     })
     .filter((shop) => shop.latitude !== 0 && shop.longitude !== 0);
 
-  return sortShopsByDistance(shops, location);
+  console.log("getShops: Processed shops length:", shops.length);
+  const sorted = sortShopsByDistance(shops, location);
+  console.timeEnd("getShops: Total time");
+  return sorted;
 }
 
 export async function searchShops(query: string): Promise<Shop[]> {

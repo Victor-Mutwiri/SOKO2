@@ -1,12 +1,12 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 
 import { colors, radii, spacing } from "@/constants/theme";
 import { Coordinates, Shop } from "@/types/domain";
 import { isInsideVisitRadius } from "@/utils/geo";
 
-export function ShopCard({
+export const ShopCard = memo(function ShopCard({
   shop,
   location,
   onSell,
@@ -18,7 +18,7 @@ export function ShopCard({
   onVisit: (shop: Shop) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const geofence = location ? isInsideVisitRadius(location, shop) : null;
+  const geofence = useMemo(() => (location ? isInsideVisitRadius(location, shop) : null), [location, shop]);
   const isUnlocked = Boolean(geofence?.inside);
 
   return (
@@ -115,7 +115,7 @@ export function ShopCard({
       </Modal>
     </>
   );
-}
+});
 
 function ActionRow({ icon, label, onPress }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; onPress: () => void }) {
   return (

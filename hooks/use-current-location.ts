@@ -5,15 +5,18 @@ import { getStoredLocation, saveLocation } from "@/services/location-session";
 import { Coordinates } from "@/types/domain";
 
 export function useCurrentLocation(options?: { refreshOnMount?: boolean }) {
+  console.log("useCurrentLocation: Hook initialized");
   const [location, setLocation] = useState<Coordinates | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = useCallback(async () => {
+    console.log("useCurrentLocation: Refresh called");
     setIsLoading(true);
     setError(null);
 
     const storedLocation = await getStoredLocation();
+    console.log("useCurrentLocation: Stored location loaded:", storedLocation ? "yes" : "no");
     if (storedLocation) {
       setLocation(storedLocation);
     }
@@ -48,11 +51,14 @@ export function useCurrentLocation(options?: { refreshOnMount?: boolean }) {
   }, []);
 
   useEffect(() => {
+    console.log("useCurrentLocation: useEffect triggered, refreshOnMount:", options?.refreshOnMount ?? true);
     if (options?.refreshOnMount ?? true) {
       refresh();
     } else {
       const loadStored = async () => {
+        console.log("useCurrentLocation: Loading stored location");
         const storedLocation = await getStoredLocation();
+        console.log("useCurrentLocation: Stored location result:", storedLocation ? "available" : "not available");
         if (storedLocation) setLocation(storedLocation);
         setIsLoading(false);
       };

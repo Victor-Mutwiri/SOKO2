@@ -84,11 +84,15 @@ export default function SetupScreen() {
           if (isCancelled) return;
 
           setCurrentStep(step);
+          console.log(`Setup: Starting prefetch for ${step.key}`);
+          console.time(`Setup: Prefetch ${step.key}`);
           await queryClient.prefetchQuery({
           queryKey: step.queryKey,
           queryFn: step.fn,
           staleTime: step.key === "shops" ? Infinity : undefined
         });
+          console.timeEnd(`Setup: Prefetch ${step.key}`);
+          console.log(`Setup: Completed prefetch for ${step.key}`);
           if (isCancelled) return;
           setCompletedSteps(index + 1);
         }
