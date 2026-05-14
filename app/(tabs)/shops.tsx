@@ -103,24 +103,37 @@ export default function ShopsScreen() {
   );
 
   const renderShop = useCallback(
-    ({ item }: { item: Shop }) => (
-      <ShopCard shop={item} location={location} onSell={handleSell} onVisit={handleVisit} />
-    ),
+    ({ item }: { item: Shop }) => <ShopCard shop={item} location={location} onSell={handleSell} onVisit={handleVisit} />,
     [handleSell, handleVisit, location]
   );
 
   const listHeader = (
-    <>
-      <View style={{ gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
-        <Text selectable style={{ color: colors.text, fontSize: 28, fontWeight: "800" }}>
+    <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.md }}>
+      <View style={{ gap: spacing.xs }}>
+        <Text selectable style={{ color: colors.text, fontSize: 24, fontWeight: "800" }}>
           Onboarded shops
         </Text>
-        <Text selectable style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
+        <View style={{ width: 44, height: 4, borderRadius: 999, backgroundColor: colors.pepsiBlue }} />
+        <Text selectable style={{ color: colors.muted, fontSize: 14, lineHeight: 20 }}>
           Sales actions unlock only when the rep is within the configured visit radius.
         </Text>
       </View>
 
-      <View style={{ gap: spacing.xs, paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+      <View
+        style={{
+          backgroundColor: colors.surface,
+          borderRadius: radii.md,
+          padding: spacing.sm,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderCurve: "continuous",
+          shadowColor: "#000",
+          shadowOpacity: 0.04,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 5 },
+          elevation: 2
+        }}
+      >
         <TextInput
           value={search}
           onChangeText={setSearch}
@@ -128,33 +141,35 @@ export default function ShopsScreen() {
           placeholderTextColor={colors.muted}
           style={{
             backgroundColor: colors.surface,
-            borderColor: colors.border,
-            borderWidth: 1,
             borderRadius: radii.md,
             padding: spacing.md,
             color: colors.text,
+            borderWidth: 0,
             borderCurve: "continuous"
           }}
         />
       </View>
 
       {error ? (
-        <Text selectable style={{ color: colors.danger, paddingHorizontal: spacing.lg, paddingTop: spacing.sm }}>
+        <Text selectable style={{ color: colors.danger, paddingTop: spacing.sm }}>
           {error}
         </Text>
       ) : null}
 
-      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm }}>
+      <View style={{ gap: spacing.xs, paddingBottom: spacing.sm, paddingTop: spacing.sm }}>
         <Text selectable style={{ color: colors.text, fontSize: 20, fontWeight: "800" }}>
           Nearby outlets
         </Text>
+        <Text selectable style={{ color: colors.pepsiBlue, fontSize: 14, fontWeight: "700" }}>
+          {sortedShops.length} outlets around you
+        </Text>
       </View>
-    </>
+    </View>
   );
 
   return (
     <OperationLock>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: colors.blueSoft }}>
         <FlatList
           data={sortedShops}
           keyExtractor={(shop) => shop.id}
@@ -164,10 +179,11 @@ export default function ShopsScreen() {
             router.push("/setup?returnTo=/shops");
           }}
           contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={{ paddingBottom: 168 }}
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 168, paddingTop: spacing.sm }}
+          ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
           ListHeaderComponent={listHeader}
           ListEmptyComponent={
-            <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+            <View style={{ paddingTop: spacing.lg }}>
               <EmptyState title="No shops found" body="Onboarded shops will appear here." />
             </View>
           }
@@ -175,6 +191,7 @@ export default function ShopsScreen() {
           initialNumToRender={10}
           maxToRenderPerBatch={15}
           windowSize={11}
+          style={{ backgroundColor: colors.background }}
         />
 
         <Pressable

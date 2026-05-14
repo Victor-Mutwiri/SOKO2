@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { EmptyState } from "@/components/empty-state";
 import { OperationLock } from "@/components/operation-lock";
@@ -25,12 +26,23 @@ export default function SellScreen() {
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "credit">("cash");
   const [cart, setCart] = useState<Cart>({});
   const [notes, setNotes] = useState("");
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const shopsQuery = useQuery({ queryKey: ["shops"], queryFn: getShops });
   const productsQuery = useQuery({ queryKey: ["products"], queryFn: getProducts });
   const { location, error: locationError, refresh } = useCurrentLocation();
 
   const products = useMemo(() => productsQuery.data ?? [], [productsQuery.data]);
   const isShopSelected = Boolean(selectedShop);
+
+  useEffect(() => {
+    if (showSuccess) {
+      const timer = setTimeout(() => {
+        router.push("/shops");
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccess]);
 
   useEffect(() => {
     if (!shopId || selectedShop) return;
@@ -69,9 +81,10 @@ export default function SellScreen() {
       }),
     onSuccess: async () => {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowConfirmation(false);
+      setShowSuccess(true);
       setCart({});
       setNotes("");
-      Alert.alert("Order submitted", "The order has been recorded.");
       queryClient.invalidateQueries({ queryKey: ["recent-orders"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
       queryClient.invalidateQueries({ queryKey: ["activities"] });
@@ -80,12 +93,58 @@ export default function SellScreen() {
 
   const canSubmit = Boolean(selectedShop && geofence?.inside && items.length && !orderMutation.isPending);
 
+  if (showSuccess) {
+    return (
+      <OperationLock>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
+          <View
+            style={{
+              alignItems: "center",
+              gap: spacing.lg,
+              backgroundColor: colors.surface,
+              borderRadius: radii.lg,
+              padding: spacing.xl,
+              borderCurve: "continuous",
+              shadowColor: "#000",
+              shadowOpacity: 0.1,
+              shadowRadius: 20,
+              shadowOffset: { width: 0, height: 10 },
+              elevation: 5
+            }}
+          >
+            <View
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 40,
+                backgroundColor: colors.successSoft,
+                alignItems: "center",
+                justifyContent: "center"
+              }}
+            >
+              <MaterialCommunityIcons name="check-circle" color={colors.success} size={56} />
+            </View>
+            <View style={{ alignItems: "center", gap: spacing.xs }}>
+              <Text style={{ color: colors.text, fontSize: 24, fontWeight: "900" }}>Order successful!</Text>
+              <Text style={{ color: colors.muted, fontSize: 16, textAlign: "center" }}>
+                Your order has been submitted to {selectedShop?.name}.
+              </Text>
+              <Text style={{ color: colors.pepsiBlue, fontSize: 14, fontWeight: "700", marginTop: spacing.sm }}>
+                Returning to shops...
+              </Text>
+            </View>
+          </View>
+        </View>
+      </OperationLock>
+    );
+  }
+
   return (
     <OperationLock>
     <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}>
       {selectedShop ? (
         <View style={{ gap: spacing.md }}>
-          <Pressable onPress={() => router.back()} style={{ alignSelf: "flex-start" }}>
+          <Pressable onPress={() => router.push("/shops")} style={{ alignSelf: "flex-start" }}>
             <Text style={{ color: colors.pepsiBlue, fontWeight: "800" }}>← Back to shops</Text>
           </Pressable>
           <View
@@ -160,18 +219,52 @@ export default function SellScreen() {
           Payment method
         </Text>
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
-          <PrimaryButton
-            label="Cash"
-            variant={paymentMethod === "cash" ? "secondary" : "primary"}
+          <Pressable
             onPress={() => setPaymentMethod("cash")}
-            style={{ flex: 1 }}
-          />
-          <PrimaryButton
-            label="Credit"
-            variant={paymentMethod === "credit" ? "secondary" : "primary"}
+            style={({ pressed }) => ({
+              opacity: pressed ? 0.82 : 1,
+              flex: 1,
+              minHeight: 56,
+              borderRadius: radii.sm,
+              backgroundColor: paymentMethod === "cash" ? colors.success : colors.surface,
+              borderColor: paymentMethod === "cash" ? colors.success : colors.border,
+              borderWidth: 1,
+              paddingHorizontal: spacing.md,
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "row",
+              gap: spacing.sm,
+              borderCurve: "continuous"
+            })}
+          >
+            <Text style={{ color: paymentMethod === "cash" ? colors.surface : colors.text, fontWeight: "800", fontSize: 16 }}>
+              Cash
+            </Text>
+            {paymentMethod === "cash" && <MaterialCommunityIcons name="check" color={colors.surface} size={20} />}
+          </Pressable>
+          <Pressable
             onPress={() => setPaymentMethod("credit")}
-            style={{ flex: 1 }}
-          />
+            style={({ pressed }) => ({
+              opacity: pressed ? 0.82 : 1,
+              flex: 1,
+              minHeight: 56,
+              borderRadius: radii.sm,
+              backgroundColor: paymentMethod === "credit" ? colors.success : colors.surface,
+              borderColor: paymentMethod === "credit" ? colors.success : colors.border,
+              borderWidth: 1,
+              paddingHorizontal: spacing.md,
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "row",
+              gap: spacing.sm,
+              borderCurve: "continuous"
+            })}
+          >
+            <Text style={{ color: paymentMethod === "credit" ? colors.surface : colors.text, fontWeight: "800", fontSize: 16 }}>
+              Credit
+            </Text>
+            {paymentMethod === "credit" && <MaterialCommunityIcons name="check" color={colors.surface} size={20} />}
+          </Pressable>
         </View>
         <Text selectable style={{ color: colors.muted, fontSize: 13, lineHeight: 18 }}>
           {paymentMethod === "cash"
@@ -180,7 +273,7 @@ export default function SellScreen() {
         </Text>
       </View>
 
-      <TextInput
+      {/* <TextInput
         placeholder="Order notes"
         value={notes}
         onChangeText={setNotes}
@@ -196,7 +289,7 @@ export default function SellScreen() {
           textAlignVertical: "top",
           borderCurve: "continuous"
         }}
-      />
+      /> */}
 
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <Text selectable style={{ color: colors.muted, fontSize: 15, fontWeight: "700" }}>
@@ -208,15 +301,99 @@ export default function SellScreen() {
       </View>
 
       <PrimaryButton
-        label={orderMutation.isPending ? "Submitting..." : "Submit order"}
+        label={orderMutation.isPending ? "Submitting..." : "Confirm & submit"}
         icon="check"
         disabled={!canSubmit}
-        onPress={() => orderMutation.mutate()}
+        onPress={() => setShowConfirmation(true)}
       />
 
-      {orderMutation.error ? (
-        <Text selectable style={{ color: colors.danger }}>{orderMutation.error.message}</Text>
-      ) : null}
+      <Modal visible={showConfirmation} transparent animationType="slide" onRequestClose={() => setShowConfirmation(false)}>
+        <Pressable
+          style={{ flex: 1, backgroundColor: "rgba(16, 24, 40, 0.32)", justifyContent: "flex-end" }}
+          onPress={() => setShowConfirmation(false)}
+        >
+          <Pressable
+            style={{
+              backgroundColor: colors.surface,
+              borderTopLeftRadius: radii.lg,
+              borderTopRightRadius: radii.lg,
+              padding: spacing.lg,
+              gap: spacing.md,
+              borderCurve: "continuous"
+            }}
+          >
+            <View style={{ width: 48, height: 4, borderRadius: 999, backgroundColor: colors.pepsiBlue, alignSelf: "center", marginBottom: spacing.sm }} />
+            <Text style={{ color: colors.text, fontSize: 20, fontWeight: "900" }}>Review order</Text>
+
+            <View style={{ backgroundColor: colors.background, borderRadius: radii.md, padding: spacing.md, gap: spacing.md }}>
+              <View>
+                <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "700", marginBottom: spacing.xs }}>Selling to</Text>
+                <Text style={{ color: colors.text, fontSize: 16, fontWeight: "900" }}>{selectedShop?.name}</Text>
+              </View>
+
+              <View>
+                <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "700", marginBottom: spacing.xs }}>Items ({items.length})</Text>
+                {items.map((item) => (
+                  <View key={item.product.id} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.xs }}>
+                    <Text style={{ color: colors.text, flex: 1 }}>
+                      {item.product.name} × {item.quantity}
+                    </Text>
+                    <Text style={{ color: colors.text, fontWeight: "900" }}>{formatCurrency(item.quantity * item.product.unitPrice)}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <View style={{ borderTopColor: colors.border, borderTopWidth: 1, paddingTop: spacing.md, gap: spacing.xs }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <Text style={{ color: colors.muted }}>Payment</Text>
+                  <Text style={{ color: colors.text, fontWeight: "700" }}>{paymentMethod === "cash" ? "Cash" : "Credit"}</Text>
+                </View>
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <Text style={{ color: colors.text, fontSize: 18, fontWeight: "900" }}>Total</Text>
+                  <Text style={{ color: colors.success, fontSize: 20, fontWeight: "900" }}>{formatCurrency(total)}</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: "row", gap: spacing.sm }}>
+              <Pressable
+                onPress={() => setShowConfirmation(false)}
+                style={({ pressed }) => ({
+                  opacity: pressed ? 0.82 : 1,
+                  flex: 1,
+                  minHeight: 52,
+                  borderRadius: radii.sm,
+                  backgroundColor: colors.background,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderCurve: "continuous"
+                })}
+              >
+                <Text style={{ color: colors.text, fontWeight: "800" }}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => orderMutation.mutate()}
+                disabled={orderMutation.isPending}
+                style={({ pressed }) => ({
+                  opacity: orderMutation.isPending ? 0.6 : pressed ? 0.82 : 1,
+                  flex: 1,
+                  minHeight: 52,
+                  borderRadius: radii.sm,
+                  backgroundColor: colors.success,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderCurve: "continuous"
+                })}
+              >
+                <Text style={{ color: colors.surface, fontWeight: "800" }}>{orderMutation.isPending ? "Submitting..." : "Submit order"}</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
     </ScrollView>
     </OperationLock>
   );

@@ -1,8 +1,9 @@
 import { useNavigation, usePreventRemove } from "@react-navigation/native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useMemo, useState } from "react";
-import { Alert, ScrollView, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
 import { OperationLock } from "@/components/operation-lock";
 import { PrimaryButton } from "@/components/primary-button";
@@ -65,6 +66,7 @@ export default function NewShopScreen() {
       Alert.alert("Shop onboarded", "The shop has been submitted for activation.");
       queryClient.invalidateQueries({ queryKey: ["shops"] });
       queryClient.invalidateQueries({ queryKey: ["activities"] });
+      router.push("/shops");
     }
   });
 
@@ -74,6 +76,9 @@ export default function NewShopScreen() {
     <OperationLock>
     <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}>
       <View style={{ gap: spacing.sm }}>
+        <Pressable onPress={() => router.push("/shops")} style={{ alignSelf: "flex-start" }}>
+          <Text style={{ color: colors.pepsiBlue, fontWeight: "800" }}>← Back to shops</Text>
+        </Pressable>
         <Text selectable style={{ color: colors.text, fontSize: 28, fontWeight: "800" }}>
           Onboard shop
         </Text>

@@ -77,9 +77,7 @@ export default function DashboardScreen() {
         <View style={{ flexDirection: "row", gap: spacing.md }}>
           {isActive ? (
             <>
-              <Link href="/sell" asChild>
-                <PrimaryButton label="Start sale" icon="cart" style={{ flex: 1 }} />
-              </Link>
+              <PrimaryButton label="Start sale" icon="cart" onPress={() => router.push("/shops")} style={{ flex: 1 }} />
               <Link href="/new-shop" asChild>
                 <PrimaryButton label="Add shop" icon="plus" variant="secondary" style={{ flex: 1 }} />
               </Link>

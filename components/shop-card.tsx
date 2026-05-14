@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { memo, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 
 import { colors, radii, spacing } from "@/constants/theme";
@@ -21,6 +21,16 @@ export const ShopCard = memo(function ShopCard({
   const geofence = useMemo(() => (location ? isInsideVisitRadius(location, shop) : null), [location, shop]);
   const isUnlocked = Boolean(geofence?.inside);
 
+  const handleSellPress = useCallback(() => {
+    setMenuOpen(false);
+    requestAnimationFrame(() => onSell(shop));
+  }, [onSell, shop]);
+
+  const handleVisitPress = useCallback(() => {
+    setMenuOpen(false);
+    requestAnimationFrame(() => onVisit(shop));
+  }, [onVisit, shop]);
+
   return (
     <>
       <View
@@ -31,7 +41,12 @@ export const ShopCard = memo(function ShopCard({
           borderRadius: radii.md,
           padding: spacing.md,
           gap: spacing.sm,
-          borderCurve: "continuous"
+          borderCurve: "continuous",
+          shadowColor: "#000",
+          shadowOpacity: 0.06,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: 6 },
+          elevation: 3
         }}
       >
         <View style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.md }}>
@@ -80,36 +95,27 @@ export const ShopCard = memo(function ShopCard({
         </View>
       </View>
 
-      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: "rgba(16, 24, 40, 0.28)", justifyContent: "center", padding: spacing.lg }} onPress={() => setMenuOpen(false)}>
+      <Modal visible={menuOpen} transparent animationType="slide" onRequestClose={() => setMenuOpen(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: "rgba(16, 24, 40, 0.32)", justifyContent: "flex-end" }} onPress={() => setMenuOpen(false)}>
           <Pressable
             style={{
               backgroundColor: colors.surface,
-              borderRadius: radii.md,
-              padding: spacing.md,
+              borderTopLeftRadius: radii.lg,
+              borderTopRightRadius: radii.lg,
+              padding: spacing.lg,
               gap: spacing.sm,
               borderCurve: "continuous"
             }}
           >
+            <View style={{ width: 48, height: 4, borderRadius: 999, backgroundColor: colors.pepsiBlue, alignSelf: "center", marginBottom: spacing.sm }} />
             <Text selectable style={{ color: colors.text, fontSize: 18, fontWeight: "900" }}>
               {shop.name}
             </Text>
-            <ActionRow
-              icon="cart-outline"
-              label="Sell to shop"
-              onPress={() => {
-                setMenuOpen(false);
-                onSell(shop);
-              }}
-            />
-            <ActionRow
-              icon="map-marker-check-outline"
-              label="Mark as visit"
-              onPress={() => {
-                setMenuOpen(false);
-                onVisit(shop);
-              }}
-            />
+            <Text selectable style={{ color: colors.muted, fontSize: 14, lineHeight: 20 }}>
+              Choose an action for this shop.
+            </Text>
+            <ActionRow icon="cart-outline" label="Sell to shop" onPress={handleSellPress} />
+            <ActionRow icon="map-marker-check-outline" label="Mark as visit" onPress={handleVisitPress} />
           </Pressable>
         </Pressable>
       </Modal>
@@ -122,19 +128,24 @@ function ActionRow({ icon, label, onPress }: { icon: keyof typeof MaterialCommun
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        opacity: pressed ? 0.76 : 1,
-        minHeight: 50,
-        borderRadius: radii.sm,
+        opacity: pressed ? 0.84 : 1,
+        minHeight: 56,
+        borderRadius: radii.md,
         backgroundColor: colors.background,
+        paddingVertical: spacing.sm,
         paddingHorizontal: spacing.md,
         flexDirection: "row",
         alignItems: "center",
+        justifyContent: "space-between",
         gap: spacing.md,
         borderCurve: "continuous"
       })}
     >
-      <MaterialCommunityIcons name={icon} color={colors.pepsiBlue} size={21} />
-      <Text style={{ color: colors.text, fontWeight: "900" }}>{label}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+        <MaterialCommunityIcons name={icon} color={colors.pepsiBlue} size={22} />
+        <Text style={{ color: colors.text, fontWeight: "900", fontSize: 16 }}>{label}</Text>
+      </View>
+      <MaterialCommunityIcons name="chevron-right" color={colors.muted} size={20} />
     </Pressable>
   );
 }
